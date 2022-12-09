@@ -83,6 +83,9 @@ public class Tagger {
     public List<?> pos(String phrase, Boolean join, Boolean detail ) {
         return tag(phrase).pos(join, detail);
     }
+    public List<?> pos(String phrase, Boolean flatten, Boolean join, Boolean detail ) {
+        return tag(phrase).pos(flatten, join, detail);
+    }
 
     public List<String> morphs(String phrase) {
         return tag(phrase).morphs();

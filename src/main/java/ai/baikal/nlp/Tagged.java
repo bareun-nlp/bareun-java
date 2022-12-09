@@ -38,8 +38,20 @@ public class Tagged {
         return BaikalLanguageServiceClient.toJson(r);
     }
 
-    // TODO 
-    // public Object as_json()
+    /*
+    public List<List<String[]>> as_json() {
+        List<List<String[]>> ret = new ArrayList<>();
+        for(Sentence s: r.getSentencesList()) 
+            for( Token t : s.getTokensList() ) { 
+                List<String[]> token = new ArrayList<>();  
+                ret.add(token);
+                for( Morpheme m : t.getMorphemesList()) {                    
+                    token.add( _pos_array(m, true) );
+                }
+            }
+        return ret;
+    }
+     */
 
     public void print_as_json( ) {
         print_as_json(System.out);
@@ -72,6 +84,27 @@ public class Tagged {
         };
     }
 
+    public List<List<?>> pos_structured(Boolean join, Boolean detail) {
+        List<List<?>> ret = new ArrayList<>();
+        for(Sentence s: r.getSentencesList()) 
+            for( Token t : s.getTokensList() ) { 
+                List<?> token = new ArrayList<>();
+                List<String[]> _t_arr = new ArrayList<String[]>();
+                List<String> _t_str = new ArrayList<String>();
+                if( join ) 
+                    token = _t_str;
+                else 
+                    token = _t_arr;  
+                ret.add(token);
+                for( Morpheme m : t.getMorphemesList()) {         
+                    if( join ) 
+                        _t_str.add( _pos_str(m, detail) );
+                    else
+                        _t_arr.add( _pos_array(m, detail) );;
+                }
+            }
+        return ret;
+    }
 
     public List<String> pos() {
         return pos(false);
@@ -130,6 +163,13 @@ public class Tagged {
                         ret.add( _pos_array(m, detail) );
             return ret;
         }
+    }
+
+    public List<?> pos(Boolean  flatten, Boolean join, Boolean detail ) {
+        if( flatten )
+            return pos(join, detail);
+        else 
+            return pos_structured(join, detail);
     }
 
     public List<String> morphs() {
