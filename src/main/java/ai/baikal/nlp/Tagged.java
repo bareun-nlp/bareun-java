@@ -7,11 +7,8 @@ import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
-import ai.baikal.*;
-
 
 public class Tagged {
-
     AnalyzeSyntaxResponse r;
     String phrase;
     
@@ -171,6 +168,5 @@ public class Tagged {
                         ret.add( m.getText().getContent() );
         return ret;
     }
-
 }
 

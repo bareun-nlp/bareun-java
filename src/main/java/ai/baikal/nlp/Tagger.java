@@ -1,9 +1,8 @@
 package ai.baikal.nlp;
 
-import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
-
-import ai.baikal.*;
+import java.util.Map;
 
 
 
@@ -12,7 +11,7 @@ public class Tagger {
     protected BaikalLanguageServiceClient.Host host;
     protected String domain;
     protected BaikalLanguageServiceClient client;
-    protected List<?> custom_dict = new ArrayList<>();
+    protected Map<String, CustomDict> custom_dicts = new HashMap<String, CustomDict>();
     
     public Tagger() {
         this(BaikalLanguageServiceClient.DEF_ADDRESS);
@@ -48,7 +47,12 @@ public class Tagger {
     }
 
 
-    // public custom_dict(String domain)
+    public CustomDict custom_dict(String domain) throws NullPointerException {
+        if( custom_dicts.get(domain) != null ) return custom_dicts.get(domain);
+        CustomDict dict = new CustomDict(domain, host);
+        custom_dicts.put(domain, dict);
+        return dict; 
+    }
     
     public Tagged tag(String phrase ) {
         return tag(phrase, false);

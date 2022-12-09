@@ -5,70 +5,33 @@ import baikal.ai.AnalyzeSyntaxResponse;
 import baikal.ai.Document;
 import baikal.ai.EncodingType;
 import baikal.ai.LanguageServiceGrpc;
-import io.grpc.ManagedChannel;
-import io.grpc.ManagedChannelBuilder;
 import io.grpc.StatusRuntimeException;
 
-// import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileReader;
-// import java.security.AccessControlContext;
 import java.security.AccessController;
 import java.security.PrivilegedAction;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-import com.google.protobuf.MessageOrBuilder;
-import com.google.protobuf.util.JsonFormat;
-
-public class BaikalLanguageServiceClient {
+public class BaikalLanguageServiceClient extends ClientBase {
     LanguageServiceGrpc.LanguageServiceBlockingStub client;
     private final static Logger LOGGER = Logger.getGlobal();
-    
-    protected ManagedChannel channel;
-    protected AnalyzeSyntaxResponse lastResponse;
 
-    public final static int DEF_PORT = 5656;
-    public final static String DEF_ADDRESS = "nlp.baikal.ai"; // "10.3.8.44";
-
-    public static class Host {
-        public String host;
-        public int port;
-        public Host(String host, int port) {
-            this.host = host;
-            this.port = port;
-        }
-        public Host(String host) {
-            if( host.indexOf(":") >= 0 ) {
-                String[] arr = host.split(":");
-                this.host = arr[0];
-                this.port = Integer.parseInt( arr[1] );
-            }
-            else {
-                this.host = host;
-                this.port = DEF_PORT;
-            }
-        }
-    }
-    protected Host host;
+    protected AnalyzeSyntaxResponse lastResponse; 
 
     public BaikalLanguageServiceClient() {
-        this(DEF_ADDRESS, DEF_PORT)   ;
+        super();
     }
 
     public BaikalLanguageServiceClient(String host) {
-        this.host = new Host(host);
+        super(host);        
     }
 
     public BaikalLanguageServiceClient(String host, int port) {
-        this.host = new Host(host, port);
+        super(host, port);
     }
 
     public BaikalLanguageServiceClient(Host host) {
-        this.host = host;
+        super(host);
     }
 
     public AnalyzeSyntaxResponse analyze_syntax(String text) {
@@ -85,8 +48,8 @@ public class BaikalLanguageServiceClient {
         lastResponse = AccessController.doPrivileged((PrivilegedAction<AnalyzeSyntaxResponse>) () -> {
             AnalyzeSyntaxResponse response = null;
             try {
-                channel = ManagedChannelBuilder.forAddress(host.host, host.port).usePlaintext().build();
-                client = LanguageServiceGrpc.newBlockingStub(channel);
+                if( client == null )
+                    client = LanguageServiceGrpc.newBlockingStub(loadChannel());
                 LOGGER.setLevel(Level.INFO);
                 LOGGER.info("analyze - '"+text+"'");
                 Document document = Document.newBuilder().setContent(text).setLanguage("ko-KR").build();
@@ -105,7 +68,7 @@ public class BaikalLanguageServiceClient {
                 LOGGER.warning(text);
                 return null;
             } finally {
-                channel.shutdown();
+                shutdownChannel();
             }
             return response;
         });
@@ -114,23 +77,18 @@ public class BaikalLanguageServiceClient {
 
     public AnalyzeSyntaxResponse get() { return lastResponse; }
 
-    public void shutdownChannel() {
-        channel.shutdown();
-    }
-
-    public static String toJson(MessageOrBuilder obj) {
-        String jsonString = "";
-        
-        if( obj == null ) return jsonString;
-        try {
-            jsonString = JsonFormat.printer().includingDefaultValueFields().print(obj);            
-        } catch(Exception e) {
-            e.printStackTrace();
-        }
-        return jsonString;  
-    }
+    
 
     public String toJson() {
         return toJson(lastResponse);       
-    } 
+    }
+
+    /* (non-Javadoc)
+     * @see ai.baikal.nlp.ClientBase#shutdownChannel()
+     */
+    @Override
+    public void shutdownChannel() {
+        super.shutdownChannel();
+        client = null;
+    }
 }
