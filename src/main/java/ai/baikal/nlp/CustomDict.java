@@ -69,15 +69,26 @@ public class CustomDict extends CustomDictionaryServiceClient {
         this.domain = domain;
     }
 
+    public Set<String> getSet(String set_name) {
+        switch(set_name) {
+            case "np_set" : return np_set;
+            case "cp_set" : return cp_set;
+            case "cp_caret_set" : return cp_caret_set;
+            default : return null;
+        }
+    }
 
-    public void read_np_set_from_file(String fn) {
+    public Integer read_np_set_from_file(String fn) {
         np_set = read_dict_file(fn);
+        return np_set.size();
     }
-    public void read_cp_set_from_file(String fn) {
+    public Integer read_cp_set_from_file(String fn) {
         cp_set = read_dict_file(fn);
+        return cp_set.size();
     }
-    public void read_cp_caret_set_from_file(String fn) {
+    public Integer read_cp_caret_set_from_file(String fn) {
         cp_caret_set = read_dict_file(fn);
+        return cp_caret_set.size();
     }
 
     public void copy_np_set( Set<String> dict_set ) {

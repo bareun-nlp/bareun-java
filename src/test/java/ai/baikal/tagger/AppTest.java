@@ -2,6 +2,7 @@ package ai.baikal.tagger;
 
 import static org.junit.Assert.assertTrue;
 
+import java.nio.file.Path;
 import java.util.List;
 
 import org.junit.Test;
@@ -13,6 +14,8 @@ import com.google.gson.Gson;
 import ai.baikal.nlp.*;
 import baikal.ai.AnalyzeSyntaxRequest;
 import baikal.ai.AnalyzeSyntaxResponse;
+import baikal.ai.CustomDictionary;
+import baikal.ai.CustomDictionaryMeta;
 import baikal.ai.Document;
 import baikal.ai.LanguageServiceGrpc;
 
@@ -22,6 +25,17 @@ import baikal.ai.LanguageServiceGrpc;
 public class AppTest 
 {
     private static Logger logger = LoggerFactory.getLogger(AppTest.class.getSimpleName());
+
+    void log(Object str){
+       
+        if( str instanceof String ) {
+            logger.info(str.toString());
+        }  else {
+            Gson gson = new Gson();
+            logger.info(gson.toJson(str));
+        }
+  
+    }
     /**
      * Rigorous Test :-)
      */
@@ -48,9 +62,8 @@ public class AppTest
         Boolean flatten = true, join = true, detail = true;
         ret = tag.pos(flatten, join, detail);
         assertTrue(!ret.isEmpty());
-        Gson gson = new Gson(); 
-        logger.info(String.format("flatten = %B, join = %B, detail = %B", flatten , join , detail));
-        logger.info(gson.toJson(ret));
+        log(String.format("flatten = %B, join = %B, detail = %B", flatten , join , detail));
+        log(ret);
 
 
         flatten = true;
@@ -58,16 +71,16 @@ public class AppTest
         detail = false;
         ret = tag.pos(flatten, join, detail);
         assertTrue(!ret.isEmpty());
-        logger.info(String.format("flatten = %B, join = %B, detail = %B", flatten , join , detail));
-        logger.info(gson.toJson(ret));
+        log(String.format("flatten = %B, join = %B, detail = %B", flatten , join , detail));
+        log(ret);
 
         flatten = true;
         join = false;
         detail = true;
         ret = tag.pos(flatten, join, detail);
         assertTrue(!ret.isEmpty());
-        logger.info(String.format("flatten = %B, join = %B, detail = %B", flatten , join , detail));
-        logger.info(gson.toJson(ret));
+        log(String.format("flatten = %B, join = %B, detail = %B", flatten , join , detail));
+        log(ret);
 
 
         flatten = false;
@@ -75,38 +88,69 @@ public class AppTest
         detail = true;
         ret = tag.pos(flatten, join, detail);
         assertTrue(!ret.isEmpty());
-        logger.info(String.format("flatten = %B, join = %B, detail = %B", flatten , join , detail));
-        logger.info(gson.toJson(ret));
+        log(String.format("flatten = %B, join = %B, detail = %B", flatten , join , detail));
+        log(ret);
 
         flatten = false;
         join = false;
         detail = true;
         ret = tag.pos(flatten, join, detail);
         assertTrue(!ret.isEmpty());
-        logger.info(String.format("flatten = %B, join = %B, detail = %B", flatten , join , detail));
-        logger.info(gson.toJson(ret));
+        log(String.format("flatten = %B, join = %B, detail = %B", flatten , join , detail));
+        log(ret);
     }
 
     
     @Test
     public void morphs() {
         Tagged tag = new Tagger("localhost").tag(TestString);
-        Gson gson = new Gson(); 
 
         List<String> ret = tag.morphs();
         assertTrue(!ret.isEmpty());
-        logger.info("morphs()");
-        logger.info(gson.toJson(ret));
+        log("morphs()");
+        log(ret);
 
         ret = tag.nouns();
         assertTrue(!ret.isEmpty());
-        logger.info("nouns()");
-        logger.info(gson.toJson(ret));
+        log("nouns()");
+        log(ret);
 
         ret = tag.verbs();
         assertTrue(!ret.isEmpty());
-        logger.info("verbs()");
-        logger.info(gson.toJson(ret));
+        log("verbs()");
+        log(ret);
+    }
+
+    @Test
+    public void testCustomDict() {
+        CustomDict dict = new CustomDict("game", "localhost");
+
+       
+
+        log("testCustomDict()");
+        log("read file.");
+
+        String curdir = System.getProperty("user.dir");
+        Path path = Path.of( curdir, "testdict.txt");
+        if( dict.read_np_set_from_file(path.toString()) <= 0 ) {
+            log("file io error : " + path.toString());
+            return ;
+        }
+        log(dict.getSet("np_set"));
+
+        Boolean r = dict.update();
+        assertTrue(r);
+
+        dict.load();
+        log("update and load.");
+        log(dict.getSet("np_set"));
+
+        log("get list ");
+        List<CustomDictionaryMeta> list = dict.get_list();
+        for(CustomDictionaryMeta meta: list) {
+            log(meta.getDomainName());
+        }
+        
     }
 
     

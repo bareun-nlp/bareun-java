@@ -127,7 +127,7 @@ public class CustomDictionaryServiceClient extends ClientBase {
             }
             return response;
         });
-        return res != null && res.getUpdatedDomainName() == domain ;
+        return res != null && res.getUpdatedDomainName().equals( domain) ;
     }
 
 
