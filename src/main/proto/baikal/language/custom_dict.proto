@@ -1,0 +1,126 @@
+// Copyright 2019 BAIKAL AI Inc.
+//
+
+syntax = "proto3";
+
+package baikal.language;
+
+option go_package = "baikal.ai/proto/baikal/language";
+option java_package = "baikal.ai";
+option java_multiple_files = true;
+option java_outer_classname = "CustomDictionaryServiceProto";
+
+import "baikal/language/dict_common.proto";
+import "google/protobuf/empty.proto";
+import "google/api/annotations.proto";
+
+service CustomDictionaryService {
+  // 전체 목록을 다 가져오기
+  rpc GetCustomDictionaryList (google.protobuf.Empty) returns (GetCustomDictionaryListResponse) {
+    option (google.api.http) = {
+      get: "/baikal-nlp/api/v1/customdict"
+      body: "*"
+    };
+  }
+  // 현재 저장되어 있는 사전 하나만 가져온다.
+  rpc GetCustomDictionary (GetCustomDictionaryRequest) returns (GetCustomDictionaryResponse) {
+    option (google.api.http) = {
+      get: "/baikal-nlp/api/v1/customdict/{domain_name}"
+      body: "*"
+    };
+  }
+  // 전체를 모두 다 바꿔치기하는 경우
+  rpc UpdateCustomDictionary (UpdateCustomDictionaryRequest) returns (UpdateCustomDictionaryResponse) {
+    option (google.api.http) = {
+      post: "/baikal-nlp/api/v1/customdict/{domain_name}"
+      body: "*"
+    };
+  }
+  // 여러 개를 한꺼번에 지운다.
+  rpc RemoveCustomDictionaries (RemoveCustomDictionariesRequest) returns (RemoveCustomDictionariesResponse) {
+    option (google.api.http) = {
+      post: "/baikal-nlp/api/v1/customdict/delete"
+      body: "*"
+    };
+  }
+}
+
+// 하나의 도메인용 커스텀 사전 데이터
+//
+message CustomDictionaryMeta {
+  string domain_name = 1;
+
+  message DictMeta {
+    // 사전의 유형
+    DictType type = 1;
+    // 사전의 이름
+    // 사전의 이름은 반드시 "[DomainName]-"로 시작해야 한다.
+    // 사전의 이름은 다음 규칙에 따라서 만든다.
+    // 고유명사는 np-set
+    // 복합명사는 cp-set
+    // 복합명사분리사전은 `cp-caret-set`
+    string name = 2;
+    // 사전 데이터의 개수
+    int32 items_count = 3;
+  }
+
+  // 고유명사용 사전
+  DictMeta np_set = 2;
+  // 복합명사용 사전
+  DictMeta cp_set = 3;
+  // 복합명사 분리용 사전
+  DictMeta cp_caret_set = 4;
+}
+
+// 커스텀 사전의 데이터 전송 규격
+message CustomDictionary {
+  string domain_name = 1;
+  // 고유명사용 사전
+  DictSet np_set = 2;
+  // 복합명사용 사전
+  DictSet cp_set = 3;
+  // 복합명사 분리용 사전
+  DictSet cp_caret_set = 4;
+}
+
+//
+// 프로세스 내부에서 서비스 중인 도메인 Dictionary 사전
+//
+message CustomDictionaryMap {
+  map<string, CustomDictionary> custom_dict_map = 1;
+}
+
+// 커스텀 사전 목록을 가져온다.
+message GetCustomDictionaryListResponse {
+  repeated CustomDictionaryMeta domain_dicts = 1;
+}
+
+message GetCustomDictionaryRequest {
+  string domain_name = 1;
+}
+
+message GetCustomDictionaryResponse {
+  string domain_name = 1;
+  CustomDictionary dict = 2;
+}
+
+message UpdateCustomDictionaryRequest {
+  string domain_name = 1;
+  CustomDictionary dict = 2;
+}
+
+message UpdateCustomDictionaryResponse {
+  string updated_domain_name = 1;
+}
+
+message RemoveCustomDictionariesRequest {
+  repeated string domain_names = 1;
+  bool all = 2;
+}
+
+// 삭제된 커스텀 사전의 목록
+message RemoveCustomDictionariesResponse {
+  map<string, bool> deleted_domain_names = 1;
+}
+
+
