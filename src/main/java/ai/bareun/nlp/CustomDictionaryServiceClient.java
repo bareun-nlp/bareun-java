@@ -1,17 +1,17 @@
-package ai.baikal.nlp;
+package ai.bareun.nlp;
 
-import baikal.ai.CustomDictionary;
-import baikal.ai.CustomDictionaryMeta;
-import baikal.ai.CustomDictionaryServiceGrpc;
-import baikal.ai.DictCommon;
-import baikal.ai.GetCustomDictionaryListResponse;
-import baikal.ai.GetCustomDictionaryRequest;
-import baikal.ai.GetCustomDictionaryResponse;
-import baikal.ai.RemoveCustomDictionariesRequest;
-import baikal.ai.RemoveCustomDictionariesResponse;
-import baikal.ai.UpdateCustomDictionaryRequest;
-import baikal.ai.UpdateCustomDictionaryResponse;
-import baikal.ai.DictCommon.DictType;
+import bareun.ai.CustomDictionary;
+import bareun.ai.CustomDictionaryMeta;
+import bareun.ai.CustomDictionaryServiceGrpc;
+import bareun.ai.DictSet;
+import bareun.ai.GetCustomDictionaryListResponse;
+import bareun.ai.GetCustomDictionaryRequest;
+import bareun.ai.GetCustomDictionaryResponse;
+import bareun.ai.RemoveCustomDictionariesRequest;
+import bareun.ai.RemoveCustomDictionariesResponse;
+import bareun.ai.UpdateCustomDictionaryRequest;
+import bareun.ai.UpdateCustomDictionaryResponse;
+import bareun.ai.DictType;
 import io.grpc.StatusRuntimeException;
 
 // import java.security.AccessControlContext;
@@ -27,8 +27,8 @@ public class CustomDictionaryServiceClient extends ClientBase {
     CustomDictionaryServiceGrpc.CustomDictionaryServiceBlockingStub client;
     private final static Logger LOGGER = Logger.getGlobal();
 
-    public static DictCommon.DictSet build_dict_set(String domain, String name, Set<String> dict_set ) {
-        DictCommon.DictSet.Builder builder = DictCommon.DictSet.newBuilder();
+    public static DictSet build_dict_set(String domain, String name, Set<String> dict_set ) {
+        DictSet.Builder builder = DictSet.newBuilder();
 
         builder.setName(domain + "-" + name)
             .setType(DictType.WORD_LIST);
@@ -183,7 +183,7 @@ public class CustomDictionaryServiceClient extends ClientBase {
 
 
      /* (non-Javadoc)
-     * @see ai.baikal.nlp.ClientBase#shutdownChannel()
+     * @see ai.bareun.nlp.ClientBase#shutdownChannel()
      */
     @Override
     public void shutdownChannel() {

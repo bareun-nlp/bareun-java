@@ -3,14 +3,14 @@
 
 syntax = "proto3";
 
-package baikal.language;
+package bareun;
 
-option go_package = "baikal.ai/proto/baikal/language";
-option java_package = "baikal.ai";
+option go_package = "bareun.ai/proto/bareun";
+option java_package = "bareun.ai"; 
 option java_multiple_files = true;
 option java_outer_classname = "CustomDictionaryServiceProto";
 
-import "baikal/language/dict_common.proto";
+import "bareun/dict_common.proto";
 import "google/protobuf/empty.proto";
 import "google/api/annotations.proto";
 
@@ -18,28 +18,28 @@ service CustomDictionaryService {
   // 전체 목록을 다 가져오기
   rpc GetCustomDictionaryList (google.protobuf.Empty) returns (GetCustomDictionaryListResponse) {
     option (google.api.http) = {
-      get: "/baikal-nlp/api/v1/customdict"
+      get: "/bareun/api/v1/customdict"
       body: "*"
     };
   }
   // 현재 저장되어 있는 사전 하나만 가져온다.
   rpc GetCustomDictionary (GetCustomDictionaryRequest) returns (GetCustomDictionaryResponse) {
     option (google.api.http) = {
-      get: "/baikal-nlp/api/v1/customdict/{domain_name}"
+      get: "/bareun/api/v1/customdict/{domain_name}"
       body: "*"
     };
   }
   // 전체를 모두 다 바꿔치기하는 경우
   rpc UpdateCustomDictionary (UpdateCustomDictionaryRequest) returns (UpdateCustomDictionaryResponse) {
     option (google.api.http) = {
-      post: "/baikal-nlp/api/v1/customdict/{domain_name}"
+      post: "/bareun/api/v1/customdict/{domain_name}"
       body: "*"
     };
   }
   // 여러 개를 한꺼번에 지운다.
   rpc RemoveCustomDictionaries (RemoveCustomDictionariesRequest) returns (RemoveCustomDictionariesResponse) {
     option (google.api.http) = {
-      post: "/baikal-nlp/api/v1/customdict/delete"
+      post: "/bareun/api/v1/customdict/delete"
       body: "*"
     };
   }
@@ -70,6 +70,10 @@ message CustomDictionaryMeta {
   DictMeta cp_set = 3;
   // 복합명사 분리용 사전
   DictMeta cp_caret_set = 4;
+  // 동사 사전
+  DictMeta vv_set = 5;
+  // 형용사 사전
+  DictMeta va_set = 6;
 }
 
 // 커스텀 사전의 데이터 전송 규격
@@ -81,6 +85,10 @@ message CustomDictionary {
   DictSet cp_set = 3;
   // 복합명사 분리용 사전
   DictSet cp_caret_set = 4;
+  // 동사 사전
+  DictSet vv_set = 5;
+  // 형용사 사전
+  DictSet va_set = 6;
 }
 
 //
@@ -122,5 +130,4 @@ message RemoveCustomDictionariesRequest {
 message RemoveCustomDictionariesResponse {
   map<string, bool> deleted_domain_names = 1;
 }
-
 

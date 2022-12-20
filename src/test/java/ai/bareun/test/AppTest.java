@@ -1,4 +1,4 @@
-package ai.baikal.tagger;
+package ai.bareun.test;
 
 import static org.junit.Assert.assertTrue;
 
@@ -11,13 +11,13 @@ import org.slf4j.LoggerFactory;
 
 import com.google.gson.Gson;
 
-import ai.baikal.nlp.*;
-import baikal.ai.AnalyzeSyntaxRequest;
-import baikal.ai.AnalyzeSyntaxResponse;
-import baikal.ai.CustomDictionary;
-import baikal.ai.CustomDictionaryMeta;
-import baikal.ai.Document;
-import baikal.ai.LanguageServiceGrpc;
+import ai.bareun.nlp.*;
+import bareun.ai.AnalyzeSyntaxRequest;
+import bareun.ai.AnalyzeSyntaxResponse;
+import bareun.ai.CustomDictionary;
+import bareun.ai.CustomDictionaryMeta;
+import bareun.ai.Document;
+import bareun.ai.LanguageServiceGrpc;
 
 /**
  * Unit test for simple App.
@@ -43,11 +43,11 @@ public class AppTest
     public void shouldAnswerWithTrue()
     {
 
-        BaikalLanguageServiceClient conn = new ai.baikal.nlp.BaikalLanguageServiceClient();
+        LanguageServiceClient conn = new ai.bareun.nlp.LanguageServiceClient("localhost");
         AnalyzeSyntaxResponse response =  conn.analyze_syntax("아버지가 방에 들어가신다.");
         String str = conn.toJson();
         assertTrue( !str.isEmpty() );
-        //logger.info(str);
+        logger.info(str);
     }
 
     static String TestString = "아버지가 방에 들어가신다.";

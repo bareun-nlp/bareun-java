@@ -1,10 +1,10 @@
-package ai.baikal.nlp;
+package ai.bareun.nlp;
 
-import baikal.ai.AnalyzeSyntaxRequest;
-import baikal.ai.AnalyzeSyntaxResponse;
-import baikal.ai.Document;
-import baikal.ai.EncodingType;
-import baikal.ai.LanguageServiceGrpc;
+import bareun.ai.AnalyzeSyntaxRequest;
+import bareun.ai.AnalyzeSyntaxResponse;
+import bareun.ai.Document;
+import bareun.ai.EncodingType;
+import bareun.ai.LanguageServiceGrpc;
 import io.grpc.StatusRuntimeException;
 
 import java.security.AccessController;
@@ -12,25 +12,25 @@ import java.security.PrivilegedAction;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
-public class BaikalLanguageServiceClient extends ClientBase {
+public class LanguageServiceClient extends ClientBase {
     LanguageServiceGrpc.LanguageServiceBlockingStub client;
     private final static Logger LOGGER = Logger.getGlobal();
 
     protected AnalyzeSyntaxResponse lastResponse; 
 
-    public BaikalLanguageServiceClient() {
+    public LanguageServiceClient() {
         super();
     }
 
-    public BaikalLanguageServiceClient(String host) {
+    public LanguageServiceClient(String host) {
         super(host);        
     }
 
-    public BaikalLanguageServiceClient(String host, int port) {
+    public LanguageServiceClient(String host, int port) {
         super(host, port);
     }
 
-    public BaikalLanguageServiceClient(Host host) {
+    public LanguageServiceClient(Host host) {
         super(host);
     }
 
@@ -54,7 +54,7 @@ public class BaikalLanguageServiceClient extends ClientBase {
                 LOGGER.info("analyze - '"+text+"'");
                 Document document = Document.newBuilder().setContent(text).setLanguage("ko-KR").build();
 
-                baikal.ai.AnalyzeSyntaxRequest.Builder builder = AnalyzeSyntaxRequest.newBuilder();
+                bareun.ai.AnalyzeSyntaxRequest.Builder builder = AnalyzeSyntaxRequest.newBuilder();
                 if( domain != null && !domain.isEmpty())
                     builder.setCustomDomain(domain);
                 AnalyzeSyntaxRequest request = builder.setDocument(document)
@@ -84,7 +84,7 @@ public class BaikalLanguageServiceClient extends ClientBase {
     }
 
     /* (non-Javadoc)
-     * @see ai.baikal.nlp.ClientBase#shutdownChannel()
+     * @see ai.bareun.nlp.ClientBase#shutdownChannel()
      */
     @Override
     public void shutdownChannel() {

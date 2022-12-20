@@ -1,6 +1,6 @@
-package ai.baikal.nlp;
+package ai.bareun.nlp;
 
-import baikal.ai.CustomDictionary;
+import bareun.ai.CustomDictionary;
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;

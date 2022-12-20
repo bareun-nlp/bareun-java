@@ -1,7 +1,7 @@
-package ai.baikal.nlp;
+package ai.bareun.nlp;
 
-import baikal.ai.AnalyzeSyntaxResponse;
-import baikal.ai.*;
+import bareun.ai.AnalyzeSyntaxResponse;
+import bareun.ai.*;
 
 import java.io.PrintStream;
 import java.util.ArrayList;
@@ -35,7 +35,7 @@ public class Tagged {
     }
 
     public String as_json_str() {
-        return BaikalLanguageServiceClient.toJson(r);
+        return LanguageServiceClient.toJson(r);
     }
 
     /*

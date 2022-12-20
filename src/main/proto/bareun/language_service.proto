@@ -1,0 +1,362 @@
+// Copyright 2019-2020 BAIKAL AI Inc.
+
+syntax = "proto3";
+
+package bareun;
+
+import "google/api/annotations.proto";
+//import "google/api/client.proto";
+//import "google/api/field_behavior.proto";
+
+option go_package = "bareun.ai/proto/bareun";
+option java_package = "bareun.ai";
+option java_multiple_files = true;
+option java_outer_classname = "LanguageServiceProto";
+
+// 한국어에 대한 분석 서비스를 제공하는 서비스.
+service LanguageService {
+
+  // 텍스트의 형태를 분석하고, 문장 경계를 파악하여 토큰 단위로 잘라낸다.
+  rpc AnalyzeSyntax (AnalyzeSyntaxRequest) returns (AnalyzeSyntaxResponse) {
+    option (google.api.http) = {
+      post: "/bareun/api/v1/analyze"
+      body: "*"
+    };
+  }
+
+  // 복수의 문장을 대상으로 텍스트의 형태를 분석하고, 토큰 단위로 잘라낸다.
+  // 복수의 문장에 대한 순서를 그대로 반환하고 문장을 분할하지 않는다.
+  rpc AnalyzeSyntaxList (AnalyzeSyntaxListRequest) returns (AnalyzeSyntaxListResponse) {
+      option (google.api.http) = {
+        post: "/bareun/api/v1/analyze-list"
+        body: "*"
+      };
+  }
+  
+  // 한국어의 특성에 따라서 텍스트를 분절 단뤼로 구분해 낸다.
+  rpc Tokenize (TokenizeRequest) returns (TokenizeResponse) {
+    option (google.api.http) = {
+      post: "/bareun/api/v1/tokenize"
+      body: "*"
+    };
+  }
+
+}
+
+// ################################################################ #
+//
+// Represents the input to API methods.
+message Document {
+
+  // 입력 전체의 내용
+  // 여러 문장이 입력되면 "\n"을 넣어준다.
+  string content = 2;
+
+  // 문서의 언어. 현재는 ko_KR 만 지원한다.
+  string language = 4;
+}
+
+// 입력 문서에 분석된 문장
+message Sentence {
+  // The sentence text.
+  TextSpan text = 1;
+
+  // 어절단위로 쪼개는 것은
+  repeated Token tokens = 2;
+
+  // 띄어뜨기 등의 오류를 수정한 결과물
+  string refined = 3;
+}
+
+
+// 형태소
+message Morpheme {
+  // The sentence text.
+  TextSpan text = 1;
+  // 형태소 태그
+  Tag tag = 2;
+  // 형태소 분석 결과 확률
+  float probability = 3;
+
+  // 유의어 번호
+  // int32 disambiguation = 4;
+
+  // 사전에 없는 단어 표시
+  OutOfVocab out_of_vocab = 5;
+
+  // 사전에 없는 단어 정보 처리 결과
+  enum OutOfVocab {
+    IN_WORD_EMBEDDING = 0;  // 워드 임베딩에 포함된 내용
+    OUT_OF_VOCAB = 1;       // 자동 추측, 미등록 단어
+    IN_CUSTOM_DICT = 2;     // 사용자 제공 사전에 있는 내용
+    IN_BUILTIN_DICT = 3;    // 기본 사전에 포함된 내용
+  }
+
+  // 내부적으로 pred 된 형태소는 0~42까지 반환하지만,
+  // 1~43까지 숫자로 쓰고, UNK은 0으로 바꾼다.
+  enum Tag {
+    //// 0 1 EC
+    //// 1 2 EF
+    //// 2 3 EP
+    //// 3 4 ETM
+    //// 4 5 ETN
+    //// 5 6 IC
+    //// 6 7 JC
+    //// 7 8 JKB
+    //// 8 9 JKC
+    //// 9 10 JKG
+    //// 10 11 JKO
+    //// 11 12 JKQ
+    //// 12 13 JKS
+    //// 13 14 JKV
+    //// 14 15 JX
+    //// 15 16 MAG
+    //// 16 17 MAJ
+    //// 17 18 MMA
+    //// 18 19 MMD
+    //// 19 20 MMN
+    //// 20 21 NA
+    //// 21 22 NF
+    //// 22 23 NNB
+    //// 23 24 NNG
+    //// 24 25 NNP
+    //// 25 26 NP
+    //// 26 27 NR
+    //// 27 28 NV
+    //// 28 29 SE
+    //// 29 30 SF
+    //// 30 31 SH
+    //// 31 32 SL
+    //// 32 33 SN
+    //// 33 34 SO
+    //// 34 35 SP
+    //// 35 36 SS
+    //// 36 37 SW
+    //// 37 38 VA
+    //// 38 39 VCN
+    //// 39 40 VCP
+    //// 40 41 VV
+    //// 41 42 VX
+    //// 42 43 XPN
+    //// 43 44 XR
+    //// 44 45 XSA
+    //// 45 46 XSN
+    //// 46 47 XSV
+    UNK = 0;
+    NNG = 24; // 일반 명사
+    NNP = 25; // 고유 명사
+    NNB = 23; // 의존 명사
+    NP = 26; // 대명사
+    NR = 27; // 수사
+    NF = 22; // 명사 추정 범주
+    NA = 21; // 분석불능범주
+    NV = 28; // 용언 추정 범주
+    VV = 41; // 동사
+    VA = 38; // 형용사
+    VX = 42; // 보조 용언
+    VCP = 40; // 긍정 지정사
+    VCN = 39; // 부정 지정사
+    MMA = 18; // 성상 관형사
+    MMD = 19; // 지시 관형사
+    MMN = 20; // 수 관형사
+    MAG = 16; // 일반 부사
+    MAJ = 17; // 접속 부사
+    IC = 6; // 감탄사
+    JKS = 13; // 주격 조사
+    JKC = 9; // 보격 조사
+    JKG = 10; // 관형격 조사
+    JKO = 11; // 목적격 조사
+    JKB = 8; // 부사격 조사
+    JKV = 14; // 호격 조사
+    JKQ = 12; // 인용격 조사
+    JX = 15; // 보조사
+    JC = 7; // 접속 조사
+    EP = 3; // 선어말 어미
+    EF = 2; // 종결 어미
+    EC = 1; // 연결 어미
+    ETN = 5; // 명사형 전성 어미
+    ETM = 4; // 관형형 전성 어미
+    XPN = 43; // 체언 접두사
+    XSN = 46; // 명사 파생 접미사
+    XSV = 47; // 동사 파생 접미사
+    XSA = 45; // 형용사 파생 접미사
+    XR = 44; // 어근
+    SF = 30; // 마침표,물음표,느낌표
+    SP = 35; // 쉼표,가운뎃점,콜론,빗금
+    SS = 36; // 따옴표,괄호표,줄표
+    SE = 29; // 줄임표
+    SO = 34; // 붙임표(물결,숨김,빠짐)
+    SW = 37; // 기타기호 (논리수학기호,화폐기호)
+    SL = 32; // 외국어
+    SH = 31; // 한자
+    SN = 33; // 숫자
+  }
+}
+
+// Represents the text encoding that the caller uses to process the output.
+// Providing an `EncodingType` is recommended because the API provides the
+// beginning offsets for various outputs, such as tokens and mentions, and
+// languages that natively use different text encodings may access offsets
+// differently.
+enum EncodingType {
+  // If `EncodingType` is not specified, encoding-dependent information (such as
+  // `begin_offset`) will be set at `-1`.
+  NONE = 0;
+
+  // Encoding-dependent information (such as `begin_offset`) is calculated based
+  // on the UTF-8 encoding of the input. C++ and Go are examples of languages
+  // that use this encoding natively.
+  UTF8 = 1;
+
+  // Encoding-dependent information (such as `begin_offset`) is calculated based
+  // on the UTF-16 encoding of the input. Java and JavaScript are examples of
+  // languages that use this encoding natively.
+  UTF16 = 2;
+
+  // Encoding-dependent information (such as `begin_offset`) is calculated based
+  // on the UTF-32 encoding of the input. Python is an example of a language
+  // that uses this encoding natively.
+  UTF32 = 3;
+}
+
+// 어절
+message Token {
+  // The token text.
+  TextSpan text = 1;
+  // 어절 내부의 형태소 분리
+  repeated Morpheme morphemes = 2;
+
+  // [Lemma](https://en.wikipedia.org/wiki/Lemma_%28morphology%29) of the token.
+  string lemma = 4;
+  string tagged = 5;
+}
+
+// 텍스트 조각
+message TextSpan {
+  // 텍스트 조각의 내용
+  string content = 1;
+
+  // 텍스트 조각의 위치
+  // EncodingType에 따라서 위치의 값이 달라진다.
+  int32 begin_offset = 2;
+
+  // 길이
+  int32 length = 3;
+}
+
+
+// 형태소 분석 요청 메시지
+message AnalyzeSyntaxRequest {
+  // 입력 문서
+  Document document = 1;
+
+  // 오프셋을 계산하기 위한 인코딩 타입
+  EncodingType encoding_type = 2;
+
+  // auto split sentence true이면 자동으로 문장 분리를 시도한다.
+  // 없으면 \n 을 기준으로 문장을 자른다.
+  // 기본값은 false 이다.
+  bool auto_split_sentence = 3;
+
+  // 커스텀 사전 도메인 정보
+  // 고유명사, 복합명사 사전에 기반하여 처리함.
+  string custom_domain = 4;
+
+  // 자동 띄어쓰기
+  bool auto_spacing = 5;
+
+  // 자동 붙여쓰기 
+  bool auto_jointing = 6;
+}
+
+// 형태 분석 응담 메시지
+message AnalyzeSyntaxResponse {
+  // 입력된 문장에 포함된 문장들
+  repeated Sentence sentences = 1;
+
+  // 텍스트의 언어, 만일 언어가 지정되지 않은 경우에는 자돋으로 탐지하여 반환한다.
+  // 언어가 지정된 경우에는 동일한 언어를 반환한다.
+  // 이때, 언어는 ko_KR 등과 같이 사용한다.
+  string language = 3;
+}
+
+// 형태소 분석 요청 메시지
+message AnalyzeSyntaxListRequest {
+  // 입력 문장의 배열
+  repeated string sentences = 1;
+  // 입력 문장의 언어
+  string language = 2;
+
+  // 오프셋을 계산하기 위한 인코딩 타입
+  EncodingType encoding_type = 3;
+
+  // 커스텀 사전 도메인 정보
+  // 고유명사, 복합명사 사전에 기반하여 처리함.
+  string custom_domain = 4;
+
+  // 자동 띄어쓰기
+  bool auto_spacing = 5;
+
+  // 자동 붙여쓰기 
+  bool auto_jointing = 6;
+}
+
+// 형태 분석 응담 메시지
+message AnalyzeSyntaxListResponse {
+  // 입력된 문장에 포함된 문장들
+  // 여기서 문장은 요청에 대응하여 1:1로 맞춰진다.
+  // 만일 요청이 빈 문장이면 빈 문장으로 대응한다.
+  repeated Sentence sentences = 1;
+
+  // 텍스트의 언어, 만일 언어가 지정되지 않은 경우에는 자돋으로 탐지하여 반환한다.
+  // 언어가 지정된 경우에는 동일한 언어를 반환한다.
+  // 이때, 언어는 ko_KR 등과 같이 사용한다.
+  string language = 3;
+}
+
+
+// 토크나이즈 요청 메시지
+message TokenizeRequest {
+  // Input document.
+  Document document = 1;
+
+  // The encoding type used by the API to calculate offsets.
+  EncodingType encoding_type = 2;
+
+  // auto split sentence true이면 자동으로 문장 분리를 시도한다.
+  // 없으면 \n 을 기준으로 문장을 자른다.
+  // 기본값은 false 이다.
+  bool auto_split_sentence = 3;
+
+  // 자동 띄어쓰기
+  bool auto_spacing = 5;
+}
+
+// 토큰의 분절된 내용
+message Segment {
+  // The token text.
+  TextSpan text = 1;
+
+  // 각 위치에 대한 정보
+  string hint = 2;
+}
+
+
+message SegmentToken {
+  // The token text.
+  TextSpan text = 1;
+  // 어절 내부의 형태소 분리
+  repeated Segment segments = 2;
+  // 아름답/V+ㄴ/E
+  string tagged = 5;
+}
+
+
+// Tokenize 요청 토크나이즈에 대한 요청
+message TokenizeResponse {
+  // 분절 분리된 문장들의 배열
+  repeated SegmentToken tokens = 1;
+  
+  // ISO 문자 코드
+  string language = 3;
+}

@@ -1,4 +1,4 @@
-package ai.baikal.nlp;
+package ai.bareun.nlp;
 
 import com.google.protobuf.MessageOrBuilder;
 import com.google.protobuf.util.JsonFormat;
@@ -10,7 +10,7 @@ public class ClientBase {
     protected ManagedChannel channel;
 
     public final static int DEF_PORT = 5656;
-    public final static String DEF_ADDRESS = "nlp.baikal.ai"; // "10.3.8.44";
+    public final static String DEF_ADDRESS = "nlp.bareun.ai"; // "10.3.8.44";
 
     public static class Host {
         public String host;

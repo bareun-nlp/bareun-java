@@ -1,0 +1,33 @@
+// Copyright 2019 BAIKAL Inc.
+//
+
+syntax = "proto3";
+
+package bareun.internal.config;
+
+
+option go_package = "bareun.ai/proto/bareun/gointernal/config";
+
+// LangServer 설정 파일
+message LangServerConfig {
+  int32 version = 100;
+  // 수신 주소
+  Address address = 1;
+  // 모델 경로
+  string model_path = 2;
+  // 리소스 경로
+  string resource_path = 3;
+  // 커스텀 사전 경로
+  string custom_dict_path = 4;
+  // 라이센스 파일
+  string license_file = 5;
+  // 로그 경로
+  string log_path = 6;
+}
+
+// 수신 주소
+message Address {
+  // IP 주소
+  string ip_addr = 1; // If empty, 0.0.0.0 이 사용된다.
+  int32 port = 2; // If empty, use default, in program
+}

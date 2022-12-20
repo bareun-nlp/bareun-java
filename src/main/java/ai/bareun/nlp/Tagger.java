@@ -1,4 +1,4 @@
-package ai.baikal.nlp;
+package ai.bareun.nlp;
 
 import java.util.HashMap;
 import java.util.List;
@@ -8,13 +8,13 @@ import java.util.Map;
 
 
 public class Tagger {
-    protected BaikalLanguageServiceClient.Host host;
+    protected LanguageServiceClient.Host host;
     protected String domain;
-    protected BaikalLanguageServiceClient client;
+    protected LanguageServiceClient client;
     protected Map<String, CustomDict> custom_dicts = new HashMap<String, CustomDict>();
     
     public Tagger() {
-        this(BaikalLanguageServiceClient.DEF_ADDRESS);
+        this(LanguageServiceClient.DEF_ADDRESS);
     }
 
     public Tagger(String host) {
@@ -22,7 +22,7 @@ public class Tagger {
     }
 
     public Tagger(String host, String domain) {
-        this(new BaikalLanguageServiceClient.Host(host), domain);
+        this(new LanguageServiceClient.Host(host), domain);
     }
 
     public Tagger(String host, int port) {
@@ -30,13 +30,13 @@ public class Tagger {
     }
 
     public Tagger(String host, int port, String domain) {
-        this(new BaikalLanguageServiceClient.Host(host, port), domain );
+        this(new LanguageServiceClient.Host(host, port), domain );
     }
 
-    public Tagger(BaikalLanguageServiceClient.Host host, String domain) {
+    public Tagger(LanguageServiceClient.Host host, String domain) {
         this.host = host;
         this.domain = domain;
-        client = new BaikalLanguageServiceClient(host);
+        client = new LanguageServiceClient(host);
     }
 
 

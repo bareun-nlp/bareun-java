@@ -3,10 +3,13 @@
 
 syntax = "proto3";
 
-package baikal.language;
+package bareun;
 
-option go_package = "baikal.ai/proto/baikal/language";
-option java_package = "baikal.ai";
+option go_package = "bareun.ai/proto/bareun";
+option java_package = "bareun.ai"; 
+option java_multiple_files = true;
+option java_outer_classname = "DictionaryCommonProto";
+
 // 사전의 종류
 enum DictType {
   // 기본 배포사전에 사용되는 포맷
@@ -26,4 +29,3 @@ message DictSet {
   DictType type = 2;
   string name = 10;
 }
-
