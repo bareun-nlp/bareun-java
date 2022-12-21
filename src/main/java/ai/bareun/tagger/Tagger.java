@@ -1,4 +1,4 @@
-package ai.bareun.nlp;
+package ai.bareun.tagger;
 
 import java.util.HashMap;
 import java.util.List;

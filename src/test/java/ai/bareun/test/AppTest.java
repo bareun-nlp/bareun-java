@@ -11,7 +11,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.gson.Gson;
 
-import ai.bareun.nlp.*;
+import ai.bareun.tagger.*;
 import bareun.ai.AnalyzeSyntaxRequest;
 import bareun.ai.AnalyzeSyntaxResponse;
 import bareun.ai.CustomDictionary;
@@ -43,7 +43,7 @@ public class AppTest
     public void shouldAnswerWithTrue()
     {
 
-        LanguageServiceClient conn = new ai.bareun.nlp.LanguageServiceClient("localhost");
+        LanguageServiceClient conn = new ai.bareun.tagger.LanguageServiceClient("localhost");
         AnalyzeSyntaxResponse response =  conn.analyze_syntax("아버지가 방에 들어가신다.");
         String str = conn.toJson();
         assertTrue( !str.isEmpty() );

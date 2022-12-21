@@ -1,4 +1,4 @@
-package ai.bareun.nlp;
+package ai.bareun.tagger;
 
 import bareun.ai.CustomDictionary;
 import java.io.BufferedReader;

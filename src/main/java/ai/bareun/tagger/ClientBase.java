@@ -1,4 +1,4 @@
-package ai.bareun.nlp;
+package ai.bareun.tagger;
 
 import com.google.protobuf.MessageOrBuilder;
 import com.google.protobuf.util.JsonFormat;

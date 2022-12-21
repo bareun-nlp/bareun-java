@@ -1,4 +1,4 @@
-package ai.bareun.nlp;
+package ai.bareun.tagger;
 
 import bareun.ai.AnalyzeSyntaxRequest;
 import bareun.ai.AnalyzeSyntaxResponse;
