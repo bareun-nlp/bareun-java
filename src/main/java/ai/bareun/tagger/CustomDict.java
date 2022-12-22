@@ -1,6 +1,8 @@
 package ai.bareun.tagger;
 
 import bareun.ai.CustomDictionary;
+import io.grpc.ManagedChannel;
+
 import java.io.BufferedReader;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
@@ -17,7 +19,10 @@ public class CustomDict extends CustomDictionaryServiceClient {
     protected Set<String> cp_set = new HashSet<String>();
     protected Set<String> np_set = new HashSet<String>();
     protected Set<String> cp_caret_set = new HashSet<String>();
+    protected Set<String> vv_set = new HashSet<String>();
+    protected Set<String> va_set = new HashSet<String>();
 
+        
     public static Set<String> read_dict_file(String fn) {
         Set<String> ret = new HashSet<String>();
 
@@ -62,6 +67,12 @@ public class CustomDict extends CustomDictionaryServiceClient {
         _init(domain);
     }
 
+    public CustomDict(String domain, ManagedChannel channel) {
+        super(channel);
+        _init(domain);
+    }
+
+    
     private void _init(String domain) {
         if( domain == null || domain.isEmpty() ) 
             throw new NullPointerException();
@@ -69,44 +80,118 @@ public class CustomDict extends CustomDictionaryServiceClient {
         this.domain = domain;
     }
 
+    
     public Set<String> getSet(String set_name) {
         switch(set_name) {
             case "np_set" : return np_set;
             case "cp_set" : return cp_set;
             case "cp_caret_set" : return cp_caret_set;
+            case "vv_set" : return vv_set;
+            case "va_set" : return va_set;
             default : return null;
         }
     }
 
+    
+    /** 
+     * @param fn
+     * @return Integer
+     */
     public Integer read_np_set_from_file(String fn) {
         np_set = read_dict_file(fn);
         return np_set.size();
     }
+    
+    /** 
+     * @param fn
+     * @return Integer
+     */
     public Integer read_cp_set_from_file(String fn) {
         cp_set = read_dict_file(fn);
         return cp_set.size();
     }
+    
+    /** 
+     * @param fn
+     * @return Integer
+     */
     public Integer read_cp_caret_set_from_file(String fn) {
         cp_caret_set = read_dict_file(fn);
         return cp_caret_set.size();
     }
 
+    
+    /** 
+     * @param fn
+     * @return Integer
+     */
+    public Integer read_vv_set_from_file(String fn) {
+        vv_set = read_dict_file(fn);
+        return vv_set.size();
+    }
+
+    
+    /** 
+     * @param fn
+     * @return Integer
+     */
+    public Integer read_va_set_from_file(String fn) {
+        va_set = read_dict_file(fn);
+        return va_set.size();
+    }
+
+    
+    /** 
+     * @param dict_set
+     */
     public void copy_np_set( Set<String> dict_set ) {
         np_set = dict_set;
     }
 
+    
+    /** 
+     * @param dict_set
+     */
     public void copy_cp_set( Set<String> dict_set ) {
         cp_set = dict_set;
     }
 
+    
+    /** 
+     * @param dict_set
+     */
     public void copy_cp_caret_set( Set<String> dict_set ) {
         cp_caret_set = dict_set;
     }
 
+    
+    /** 
+     * @param dict_set
+     */
+    public void copy_vv_set( Set<String> dict_set ) {
+        vv_set = dict_set;
+    }
+
+    
+    /** 
+     * @param dict_set
+     */
+    public void copy_va_set( Set<String> dict_set ) {
+        va_set = dict_set;
+    }
+
+    
+    /** 
+     * @return Boolean
+     */
     public Boolean update() {
-        return super.update(domain, np_set, cp_set, cp_caret_set);
+        return super.update(domain, np_set, cp_set, cp_caret_set, vv_set, va_set);
     } 
 
+    
+    /** 
+     * @return CustomDictionary
+     */
     public CustomDictionary get() {
         return super.get(domain);
     }
@@ -117,13 +202,21 @@ public class CustomDict extends CustomDictionaryServiceClient {
         np_set = d.getNpSet().getItemsMap().keySet();
         cp_set = d.getCpSet().getItemsMap().keySet();
         cp_caret_set = d.getCpCaretSet().getItemsMap().keySet();
+        vv_set = d.getVvSet().getItemsMap().keySet();
+        va_set = d.getVaSet().getItemsMap().keySet();
 
     }
 
+    
+    /** 
+     * @return List<String>
+     */
     public List<String> clear() {
         np_set.clear();
         cp_set.clear();
         cp_caret_set.clear();
+        vv_set.clear();
+        va_set.clear();
 
         List<String> domains = new ArrayList<>();
         domains.add(domain);

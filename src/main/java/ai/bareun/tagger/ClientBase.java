@@ -49,6 +49,14 @@ public class ClientBase {
         this.host = host;
     }
 
+    public ClientBase(ManagedChannel channel) {
+        this.channel = channel;
+    }
+
+    public ManagedChannel getChannel() {
+        return channel;
+    }
+
     public ManagedChannel loadChannel() {
         channel = ManagedChannelBuilder.forAddress(host.host, host.port).usePlaintext().build();
         return channel;

@@ -26,14 +26,26 @@ public class Tagged {
         }
     }
 
+    
+    /** 
+     * @return AnalyzeSyntaxResponse
+     */
     public AnalyzeSyntaxResponse msg() {
         return r;
     }
 
+    
+    /** 
+     * @return List<Sentence>
+     */
     public List<Sentence> sentences() {
         return r.getSentencesList();
     }
 
+    
+    /** 
+     * @return String
+     */
     public String as_json_str() {
         return LanguageServiceClient.toJson(r);
     }
@@ -57,10 +69,20 @@ public class Tagged {
         print_as_json(System.out);
     }
 
+    
+    /** 
+     * @param out
+     */
     public void print_as_json( PrintStream out ) {
         out.println(as_json_str());
     }
 
+    
+    /** 
+     * @param m
+     * @param detail
+     * @return String
+     */
     static String _pos_str(Morpheme m, Boolean detail ) {            
         String ret =  String.format("%s/%s", m.getText().getContent(), m.getTag().name());
 
@@ -72,6 +94,12 @@ public class Tagged {
         return ret;
     }
 
+    
+    /** 
+     * @param m
+     * @param detail
+     * @return String[]
+     */
     static String[] _pos_array(Morpheme m, Boolean detail ) {
         if( !detail ) 
             return new String[] {m.getText().getContent(), m.getTag().name()};
@@ -84,6 +112,12 @@ public class Tagged {
         };
     }
 
+    
+    /** 
+     * @param join
+     * @param detail
+     * @return List
+     */
     public List<List<?>> pos_structured(Boolean join, Boolean detail) {
         List<List<?>> ret = new ArrayList<>();
         for(Sentence s: r.getSentencesList()) 
@@ -106,10 +140,19 @@ public class Tagged {
         return ret;
     }
 
+    
+    /** 
+     * @return List<String>
+     */
     public List<String> pos() {
         return pos(false);
     }
 
+    
+    /** 
+     * @param detail
+     * @return List<String>
+     */
     public List<String> pos(Boolean detail ) {
         List<String> ret = new ArrayList<String>();
         List<?> r = pos(  true, detail );
@@ -119,6 +162,10 @@ public class Tagged {
         return ret;
     }
 
+    
+    /** 
+     * @return List<Token>
+     */
     public List<Token> tokens() {
         List<Token> ret = new ArrayList<Token>();
 
@@ -129,6 +176,13 @@ public class Tagged {
         return ret;
     }
 
+    
+    /** 
+     * @param t
+     * @param join
+     * @param detail
+     * @return 
+     */
     public List<?> pos( Token t, Boolean join, Boolean detail ) {
         
         if( join ) {
@@ -145,6 +199,12 @@ public class Tagged {
         }        
     }
 
+    
+    /** 
+     * @param join
+     * @param detail
+     * @return List
+     */
     public List<?> pos(Boolean join, Boolean detail ) {
         if( join ) {
             List<String> ret = new ArrayList<String>();
@@ -165,6 +225,13 @@ public class Tagged {
         }
     }
 
+    
+    /** 
+     * @param flatten
+     * @param join
+     * @param detail
+     * @return List
+     */
     public List<?> pos(Boolean  flatten, Boolean join, Boolean detail ) {
         if( flatten )
             return pos(join, detail);
@@ -172,6 +239,10 @@ public class Tagged {
             return pos_structured(join, detail);
     }
 
+    
+    /** 
+     * @return List<String>
+     */
     public List<String> morphs() {
         List<String> ret = new ArrayList<String>();
         for(Sentence s: r.getSentencesList()) 
@@ -181,6 +252,12 @@ public class Tagged {
         return ret;
     }
 
+    
+    /** 
+     * @param arr
+     * @param val
+     * @return Integer
+     */
     private static <T> Integer indexOf(T[] arr, T val) {
         for(int i=0; i<arr.length; i++) {
             if( arr[i].equals(val) ) return i;
@@ -188,6 +265,10 @@ public class Tagged {
         return -1;
     }
 
+    
+    /** 
+     * @return List<String>
+     */
     public List<String> nouns() {
         Morpheme.Tag[] noun_tags = new  Morpheme.Tag[] {Morpheme.Tag.NNP, Morpheme.Tag.NNG, Morpheme.Tag.NP, Morpheme.Tag.NNB } ;
         List<String> ret = new ArrayList<String>();
@@ -199,6 +280,10 @@ public class Tagged {
         return ret;
     }
 
+    
+    /** 
+     * @return List<String>
+     */
     public List<String> verbs() {        
         List<String> ret = new ArrayList<String>();
         for(Sentence s: r.getSentencesList()) 

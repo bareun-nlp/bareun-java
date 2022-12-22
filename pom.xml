@@ -9,10 +9,39 @@
   <version>1.0.0</version>
   <packaging>jar</packaging>
   <name>bareun</name>
-  <!-- FIXME change it to the project's website -->
-  <url>http://www.example.com</url>
+  <description>Java client for bareun</description>
+  <url>https://github.com/bareun-nlp/bareun-java</url>
 
- <properties>
+    <licenses>
+        <license>
+            <name>BSD 3-Clause</name>
+            <url>https://opensource.org/licenses/BSD-3-Clause</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+    <developers>
+        <developer>
+            <name>Gihyun YUN</name>
+            <email>gih2yun@baikal.ai</email>            
+        </developer>
+    </developers>
+
+    <scm>
+        <url>https://github.com/bareun-nlp/bareun-java</url>
+    </scm>
+
+    <distributionManagement>
+        <snapshotRepository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/content/repositories/snapshots</url>
+        </snapshotRepository>
+        <repository>
+            <id>ossrh</id>
+            <url>https://oss.sonatype.org/service/local/staging/deploy/maven2/</url>
+        </repository>
+    </distributionManagement>
+
+    <properties>
         <java.version>1.9</java.version>
         <org.slf4j.version>1.7.7</org.slf4j.version>
         <maven.compiler.plugin.version>3.5.1</maven.compiler.plugin.version>
@@ -134,6 +163,20 @@
 
 
     </dependencies>
+    <reporting>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.4.1</version>
+                <configuration>                
+                    <show>private</show>
+                    <nohelp>true</nohelp>
+                    <excludePackageNames>bareun.ai.*:io.grpc.*</excludePackageNames>                    
+                </configuration>
+            </plugin>
+        </plugins>       
+    </reporting>
 
     <build>
         <extensions>
@@ -207,6 +250,15 @@
                         </goals>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.4.1</version>
+                <configuration>
+                    <show>public</show>
+                    <excludePackageNames>bareun.ai.*:io.grpc.*</excludePackageNames>  
+                </configuration>
             </plugin>
         </plugins>
     </build>

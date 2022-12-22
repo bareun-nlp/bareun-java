@@ -153,5 +153,11 @@ public class AppTest
         
     }
 
-    
+    static public void main() {
+        AppTest theApp = new AppTest();
+        theApp.shouldAnswerWithTrue();
+        theApp.pos();
+        theApp.morphs();
+        theApp.testCustomDict();
+    }
 }

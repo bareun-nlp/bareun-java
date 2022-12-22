@@ -5,6 +5,7 @@ import bareun.ai.AnalyzeSyntaxResponse;
 import bareun.ai.Document;
 import bareun.ai.EncodingType;
 import bareun.ai.LanguageServiceGrpc;
+import io.grpc.ManagedChannel;
 import io.grpc.StatusRuntimeException;
 
 import java.security.AccessController;
@@ -34,14 +35,36 @@ public class LanguageServiceClient extends ClientBase {
         super(host);
     }
 
+    public LanguageServiceClient( ManagedChannel channel) {
+        super(channel);
+    }
+
+    
+    /** 
+     * @param text
+     * @return AnalyzeSyntaxResponse
+     */
     public AnalyzeSyntaxResponse analyze_syntax(String text) {
         return analyze_syntax(text, "");
     }
 
+    
+    /** 
+     * @param text
+     * @param domain
+     * @return AnalyzeSyntaxResponse
+     */
     public AnalyzeSyntaxResponse analyze_syntax(String text, String domain) {
         return analyze_syntax(text, domain, false);
     }
 
+    
+    /** 
+     * @param text
+     * @param domain
+     * @param auto_split
+     * @return AnalyzeSyntaxResponse
+     */
     public AnalyzeSyntaxResponse analyze_syntax(String text, String domain, Boolean auto_split) {   
         lastResponse = null;
         if( text == null || text.isEmpty() ) return lastResponse;
@@ -79,6 +102,10 @@ public class LanguageServiceClient extends ClientBase {
 
     
 
+    
+    /** 
+     * @return String
+     */
     public String toJson() {
         return toJson(lastResponse);       
     }
