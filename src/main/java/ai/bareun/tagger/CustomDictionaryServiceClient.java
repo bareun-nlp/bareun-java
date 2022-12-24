@@ -116,7 +116,7 @@ public class CustomDictionaryServiceClient extends ClientBase {
                 CustomDictionary.Builder dict_builder = builder.getDictBuilder();
                 dict_builder.setDomainName(domain)
                             .setNpSet(build_dict_set(domain, "np-set", np))
-                            .setNpSet(build_dict_set(domain, "cp-set", cp))
+                            .setCpSet(build_dict_set(domain, "cp-set", cp))
                             .setCpCaretSet(build_dict_set(domain, "cp-caret-set", cp_caret))
                             .setVvSet(build_dict_set(domain, "vv-set", vv))
                             .setVaSet(build_dict_set(domain, "va-set", va));
