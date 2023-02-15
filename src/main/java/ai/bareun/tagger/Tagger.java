@@ -12,41 +12,44 @@ import io.grpc.ManagedChannel;
 public class Tagger {
     protected LanguageServiceClient.Host host;
     protected String domain;
+    protected String api_key;
     protected LanguageServiceClient client;
     protected Map<String, CustomDict> custom_dicts = new HashMap<String, CustomDict>();
     
-    public Tagger() {
-        this(LanguageServiceClient.DEF_ADDRESS);
+    public Tagger(String api_key) {
+        this(LanguageServiceClient.DEF_ADDRESS,api_key);
     }
 
-    public Tagger(String host) {
-        this(host, "");
+    public Tagger(String host, String api_key) {
+        this(host, "" ,api_key);
     }
 
-    public Tagger(String host, String domain) {
-        this(new LanguageServiceClient.Host(host), domain);
+    public Tagger(String host, String domain, String api_key) {
+        this(new LanguageServiceClient.Host(host), domain,api_key);
     }
 
-    public Tagger(String host, int port) {
-        this(host, port, "");
+    public Tagger(String host, int port, String api_key) {
+        this(host, port, "", api_key);
     }
 
-    public Tagger(String host, int port, String domain) {
-        this(new LanguageServiceClient.Host(host, port), domain );
+    public Tagger(String host, int port, String domain, String api_key) {
+        this(new LanguageServiceClient.Host(host, port), domain, api_key );
     }
 
-    public Tagger(LanguageServiceClient.Host host, String domain) {
+    public Tagger(LanguageServiceClient.Host host, String domain, String api_key) {
         this.host = host;
         this.domain = domain;
+        this.api_key = api_key;
         client = new LanguageServiceClient(host);
     }
 
-    public Tagger( ManagedChannel channel ) {
-        this(channel, "");
+    public Tagger( ManagedChannel channel, String api_key ) {
+        this(channel, "" ,api_key);
     }   
 
-    public Tagger( ManagedChannel channel, String domain ) {
+    public Tagger( ManagedChannel channel, String domain, String api_key ) {
         this.domain = domain;
+        this.api_key = api_key;
         client = new LanguageServiceClient(channel);
     } 
 
@@ -70,7 +73,7 @@ public class Tagger {
      */
     public CustomDict custom_dict(String domain) throws NullPointerException {
         if( custom_dicts.get(domain) != null ) return custom_dicts.get(domain);
-        CustomDict dict = new CustomDict(domain, host);
+        CustomDict dict = new CustomDict(domain, host, this.api_key);
         custom_dicts.put(domain, dict);
         return dict; 
     }
@@ -81,7 +84,7 @@ public class Tagger {
      * @return Tagged
      */
     public Tagged tag(String phrase ) {
-        return tag(phrase, false);
+        return tag(phrase, true);
     }
 
     
@@ -90,11 +93,11 @@ public class Tagger {
      * @param auto_split
      * @return Tagged
      */
-    public Tagged tag(String phrase, Boolean auto_split ) {
+    public Tagged tag(String phrase, Boolean auto_split) {
         if( phrase == null || phrase.isEmpty() )
             return new Tagged();
         
-        return new Tagged(phrase, client.analyze_syntax(phrase, domain, auto_split));
+        return new Tagged(phrase, client.analyze_syntax(phrase, domain, auto_split, this.api_key));
     }
 
     

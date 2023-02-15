@@ -1,7 +1,7 @@
 package ai.bareun.tagger;
 
-import bareun.ai.AnalyzeSyntaxResponse;
-import bareun.ai.*;
+import ai.bareun.protos.AnalyzeSyntaxResponse;
+import ai.bareun.protos.*;
 
 import java.io.PrintStream;
 import java.util.ArrayList;

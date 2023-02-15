@@ -9,7 +9,7 @@ which provides tokenizing, POS tagging for Korean.
 
 
 ## How to get bareun server 
-- Go to https://bareun.ai/.
+- Go to https://ai.bareun.protos/.
   - With registration, for the first time, you can get a free license for 3 months.
   - If you are a student or a researcher, you can get also a free license for 1 year,
     which is able to renew after 1 year.
@@ -34,13 +34,13 @@ import org.slf4j.LoggerFactory;
 
 import com.google.gson.Gson;
 
-import ai.bareun.tagger.*;
-import bareun.ai.AnalyzeSyntaxRequest;
-import bareun.ai.AnalyzeSyntaxResponse;
-import bareun.ai.CustomDictionary;
-import bareun.ai.CustomDictionaryMeta;
-import bareun.ai.Document;
-import bareun.ai.LanguageServiceGrpc;
+import ai.bareun.protos.tagger.*;
+import ai.bareun.protos.AnalyzeSyntaxRequest;
+import ai.bareun.protos.AnalyzeSyntaxResponse;
+import ai.bareun.protos.CustomDictionary;
+import ai.bareun.protos.CustomDictionaryMeta;
+import ai.bareun.protos.Document;
+import ai.bareun.protos.LanguageServiceGrpc;
 
 /**
  * Unit test for simple App.
@@ -66,7 +66,7 @@ public class AppTest
     public void shouldAnswerWithTrue()
     {
 
-        LanguageServiceClient conn = new ai.bareun.tagger.LanguageServiceClient("localhost");
+        LanguageServiceClient conn = new ai.bareun.protos.tagger.LanguageServiceClient("localhost");
         AnalyzeSyntaxResponse response =  conn.analyze_syntax("아버지가 방에 들어가신다.");
         String str = conn.toJson();
         assertTrue( !str.isEmpty() );

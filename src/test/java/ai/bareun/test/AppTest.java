@@ -12,12 +12,13 @@ import org.slf4j.LoggerFactory;
 import com.google.gson.Gson;
 
 import ai.bareun.tagger.*;
-import bareun.ai.AnalyzeSyntaxRequest;
-import bareun.ai.AnalyzeSyntaxResponse;
-import bareun.ai.CustomDictionary;
-import bareun.ai.CustomDictionaryMeta;
-import bareun.ai.Document;
-import bareun.ai.LanguageServiceGrpc;
+import groovy.ui.Console;
+import ai.bareun.protos.AnalyzeSyntaxRequest;
+import ai.bareun.protos.AnalyzeSyntaxResponse;
+import ai.bareun.protos.CustomDictionary;
+import ai.bareun.protos.CustomDictionaryMeta;
+import ai.bareun.protos.Document;
+import ai.bareun.protos.LanguageServiceGrpc;
 
 /**
  * Unit test for simple App.
@@ -43,8 +44,8 @@ public class AppTest
     public void shouldAnswerWithTrue()
     {
 
-        LanguageServiceClient conn = new ai.bareun.tagger.LanguageServiceClient("localhost");
-        AnalyzeSyntaxResponse response =  conn.analyze_syntax("아버지가 방에 들어가신다.");
+        LanguageServiceClient conn = new ai.bareun.tagger.LanguageServiceClient("nlp.bareun.ai");
+        AnalyzeSyntaxResponse response =  conn.analyze_syntax("아버지가 방에 들어가신다.","koba-99CAAKC-UPDS66A-QR9QPVF-0AYPOCA");
         String str = conn.toJson();
         assertTrue( !str.isEmpty() );
         logger.info(str);
@@ -56,7 +57,7 @@ public class AppTest
 
     @Test
     public void pos() {
-        Tagged tag = new Tagger("localhost").tag(TestString);
+        Tagged tag = new Tagger("nlp.bareun.ai","koba-99CAAKC-UPDS66A-QR9QPVF-0AYPOCA").tag(TestString);
         
         List<?> ret;
         Boolean flatten = true, join = true, detail = true;
@@ -103,7 +104,7 @@ public class AppTest
     
     @Test
     public void morphs() {
-        Tagged tag = new Tagger("localhost").tag(TestString);
+        Tagged tag = new Tagger("nlp.bareun.ai","koba-99CAAKC-UPDS66A-QR9QPVF-0AYPOCA").tag(TestString);
 
         List<String> ret = tag.morphs();
         assertTrue(!ret.isEmpty());
@@ -123,7 +124,7 @@ public class AppTest
 
     @Test
     public void testCustomDict() {
-        CustomDict dict = new CustomDict("game", "localhost");
+        CustomDict dict = new CustomDict("game", "nlp.bareun.ai","koba-99CAAKC-UPDS66A-QR9QPVF-0AYPOCA");
 
        
 
@@ -146,7 +147,7 @@ public class AppTest
         log(dict.getSet("np_set"));
 
         log("get list ");
-        List<CustomDictionaryMeta> list = dict.get_list();
+        List<CustomDictionaryMeta> list = dict.get_list("koba-99CAAKC-UPDS66A-QR9QPVF-0AYPOCA");
         for(CustomDictionaryMeta meta: list) {
             log(meta.getDomainName());
         }

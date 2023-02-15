@@ -1,6 +1,6 @@
 package ai.bareun.tagger;
 
-import bareun.ai.CustomDictionary;
+import ai.bareun.protos.CustomDictionary;
 import io.grpc.ManagedChannel;
 
 import java.io.BufferedReader;
@@ -16,6 +16,7 @@ import java.util.logging.Logger;
 public class CustomDict extends CustomDictionaryServiceClient {
     private final static Logger LOGGER = Logger.getGlobal();
     protected String domain;
+    protected String api_key;
     protected Set<String> cp_set = new HashSet<String>();
     protected Set<String> np_set = new HashSet<String>();
     protected Set<String> cp_caret_set = new HashSet<String>();
@@ -47,37 +48,38 @@ public class CustomDict extends CustomDictionaryServiceClient {
         return ret;
     }
 
-    public CustomDict(String domain) {
+    public CustomDict(String domain, String api_key) {
         super();
-        _init(domain);
+        _init(domain,api_key);
     }
 
-    public CustomDict(String domain, String host) {
+    public CustomDict(String domain, String host, String api_key) {
         super(host);  
-        _init(domain);      
+        _init(domain,api_key);      
     }
 
-    public CustomDict(String domain, String host, int port) {
+    public CustomDict(String domain, String host, int port, String api_key) {
         super(host, port);
-        _init(domain);
+        _init(domain,api_key);
     }
 
-    public CustomDict(String domain, Host host) {
+    public CustomDict(String domain, Host host, String api_key) {
         super(host);
-        _init(domain);
+        _init(domain,api_key);
     }
 
-    public CustomDict(String domain, ManagedChannel channel) {
+    public CustomDict(String domain, ManagedChannel channel, String api_key) {
         super(channel);
-        _init(domain);
+        _init(domain,api_key);
     }
 
     
-    private void _init(String domain) {
+    private void _init(String domain, String api_key) {
         if( domain == null || domain.isEmpty() ) 
             throw new NullPointerException();
         
         this.domain = domain;
+        this.api_key = api_key;
     }
 
     
@@ -185,7 +187,7 @@ public class CustomDict extends CustomDictionaryServiceClient {
      * @return Boolean
      */
     public Boolean update() {
-        return super.update(domain, np_set, cp_set, cp_caret_set, vv_set, va_set);
+        return super.update(domain, np_set, cp_set, cp_caret_set, vv_set, va_set, this.api_key);
     } 
 
     
@@ -193,7 +195,7 @@ public class CustomDict extends CustomDictionaryServiceClient {
      * @return CustomDictionary
      */
     public CustomDictionary get() {
-        return super.get(domain);
+        return super.get(domain, this.api_key);
     }
 
     public void load() {
@@ -220,6 +222,6 @@ public class CustomDict extends CustomDictionaryServiceClient {
 
         List<String> domains = new ArrayList<>();
         domains.add(domain);
-        return remove( domains );
+        return remove( domains, this.api_key );
     }
 }

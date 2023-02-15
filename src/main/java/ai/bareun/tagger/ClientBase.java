@@ -5,6 +5,14 @@ import com.google.protobuf.util.JsonFormat;
 
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
+import io.grpc.ClientInterceptor;
+import io.grpc.CallOptions;
+import io.grpc.Channel;
+import io.grpc.ClientCall;
+import io.grpc.ForwardingClientCall;
+import io.grpc.MethodDescriptor;
+import io.grpc.Metadata;
+import static io.grpc.Metadata.ASCII_STRING_MARSHALLER;
 
 public class ClientBase {
     protected ManagedChannel channel;
@@ -53,15 +61,34 @@ public class ClientBase {
         this.channel = channel;
     }
 
+    protected class serviceClientInterceptor implements ClientInterceptor{
+        String api_key = "";
+        serviceClientInterceptor(String api_key) {
+            this.api_key = api_key;
+        }
+        
+        @Override
+        public <ReqT, RespT> ClientCall<ReqT, RespT>
+        interceptCall(MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
+           return new 
+           ForwardingClientCall.SimpleForwardingClientCall<ReqT, RespT>(next.newCall(method, callOptions)) {
+              @Override
+              public void start(Listener<RespT>responseListener, Metadata headers) {
+                 headers.put(Metadata.Key.of("api-key", ASCII_STRING_MARSHALLER), api_key);
+                 super.start(responseListener, headers);
+              }
+           };
+        }
+     }
+
     public ManagedChannel getChannel() {
         return channel;
     }
 
-    public ManagedChannel loadChannel() {
-        channel = ManagedChannelBuilder.forAddress(host.host, host.port).usePlaintext().build();
+    public ManagedChannel loadChannel(String api_key) {
+        channel = ManagedChannelBuilder.forAddress(host.host, host.port).usePlaintext().intercept(new serviceClientInterceptor(api_key)).build();
         return channel;
     }
-
 
     public void shutdownChannel() {
         channel.shutdown();

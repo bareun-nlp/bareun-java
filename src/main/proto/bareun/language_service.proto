@@ -1,4 +1,4 @@
-// Copyright 2019-2020 BAIKAL AI Inc.
+// Copyright 2019-2023 BAIKAL AI Inc.
 
 syntax = "proto3";
 
@@ -8,8 +8,8 @@ import "google/api/annotations.proto";
 //import "google/api/client.proto";
 //import "google/api/field_behavior.proto";
 
-option go_package = "bareun.ai/proto/bareun";
-option java_package = "bareun.ai";
+option go_package = "ai.bareun/proto/bareun";
+option java_package = "ai.bareun.protos";
 option java_multiple_files = true;
 option java_outer_classname = "LanguageServiceProto";
 
@@ -64,7 +64,7 @@ message Sentence {
   // 어절단위로 쪼개는 것은
   repeated Token tokens = 2;
 
-  // 띄어뜨기 등의 오류를 수정한 결과물
+  // 띄어쓰기 등의 오류를 수정한 결과물
   string refined = 3;
 }
 
@@ -226,9 +226,13 @@ message Token {
   // 어절 내부의 형태소 분리
   repeated Morpheme morphemes = 2;
 
+  // 원형
   // [Lemma](https://en.wikipedia.org/wiki/Lemma_%28morphology%29) of the token.
   string lemma = 4;
+  // 테그 문자열
   string tagged = 5;
+  // 원래의 값과 다른 내용이 있으면 modified에 값을 넣는다.
+  string modified = 11;
 }
 
 // 텍스트 조각
@@ -351,12 +355,20 @@ message SegmentToken {
   string tagged = 5;
 }
 
+message SegmentSentence {
+  // The token text.
+  TextSpan text = 1;
+  // 어절 내부의 형태소 분리
+  repeated SegmentToken tokens = 2;
+
+}
 
 // Tokenize 요청 토크나이즈에 대한 요청
 message TokenizeResponse {
-  // 분절 분리된 문장들의 배열
-  repeated SegmentToken tokens = 1;
   
+  // 분절 분리된 문장들의 배열
+  repeated SegmentSentence sentences = 1;
+
   // ISO 문자 코드
   string language = 3;
 }

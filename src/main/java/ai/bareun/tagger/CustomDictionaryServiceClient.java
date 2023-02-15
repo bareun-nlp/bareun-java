@@ -1,19 +1,20 @@
 package ai.bareun.tagger;
 
-import bareun.ai.CustomDictionary;
-import bareun.ai.CustomDictionaryMeta;
-import bareun.ai.CustomDictionaryServiceGrpc;
-import bareun.ai.DictSet;
-import bareun.ai.GetCustomDictionaryListResponse;
-import bareun.ai.GetCustomDictionaryRequest;
-import bareun.ai.GetCustomDictionaryResponse;
-import bareun.ai.RemoveCustomDictionariesRequest;
-import bareun.ai.RemoveCustomDictionariesResponse;
-import bareun.ai.UpdateCustomDictionaryRequest;
-import bareun.ai.UpdateCustomDictionaryResponse;
-import bareun.ai.DictType;
+import ai.bareun.protos.CustomDictionary;
+import ai.bareun.protos.CustomDictionaryMeta;
+import ai.bareun.protos.CustomDictionaryServiceGrpc;
+import ai.bareun.protos.DictSet;
+import ai.bareun.protos.GetCustomDictionaryListResponse;
+import ai.bareun.protos.GetCustomDictionaryRequest;
+import ai.bareun.protos.GetCustomDictionaryResponse;
+import ai.bareun.protos.RemoveCustomDictionariesRequest;
+import ai.bareun.protos.RemoveCustomDictionariesResponse;
+import ai.bareun.protos.UpdateCustomDictionaryRequest;
+import ai.bareun.protos.UpdateCustomDictionaryResponse;
+import ai.bareun.protos.DictType;
 import io.grpc.ManagedChannel;
 import io.grpc.StatusRuntimeException;
+import io.grpc.CallOptions;
 
 // import java.security.AccessControlContext;
 import java.security.AccessController;
@@ -61,14 +62,15 @@ public class CustomDictionaryServiceClient extends ClientBase {
         super(channel);
     }
 
-    public List<CustomDictionaryMeta> get_list() {
+    public List<CustomDictionaryMeta> get_list(String api_key) {
         GetCustomDictionaryListResponse res = AccessController.doPrivileged((PrivilegedAction<GetCustomDictionaryListResponse>) () -> {
             GetCustomDictionaryListResponse response = null;
             try {
                 if( client == null )
-                    client = CustomDictionaryServiceGrpc.newBlockingStub(loadChannel());
+                    client = CustomDictionaryServiceGrpc.newBlockingStub(loadChannel(api_key));
                 com.google.protobuf.Empty req = com.google.protobuf.Empty.getDefaultInstance();
-                response = client.getCustomDictionaryList(req);
+                CallOptions.Key<String> metaDataKey = CallOptions.Key.create("api-key");
+                response = client.withOption(metaDataKey,api_key).getCustomDictionaryList(req);
             } catch (StatusRuntimeException e) {
                 LOGGER.warning(e.getMessage());
                 return null;
@@ -80,19 +82,18 @@ public class CustomDictionaryServiceClient extends ClientBase {
         return res != null ? res.getDomainDictsList() : null;
     }
 
-
-    public CustomDictionary get(String domain) {
+    public CustomDictionary get(String domain, String api_key) {
         GetCustomDictionaryResponse res = AccessController.doPrivileged((PrivilegedAction<GetCustomDictionaryResponse>) () -> {
             GetCustomDictionaryResponse response = null;
             try {
                 if( client == null )
-                    client = CustomDictionaryServiceGrpc.newBlockingStub(loadChannel());
+                    client = CustomDictionaryServiceGrpc.newBlockingStub(loadChannel(api_key));
                 
                 GetCustomDictionaryRequest.Builder builder = GetCustomDictionaryRequest.newBuilder();
                 GetCustomDictionaryRequest request = builder.setDomainName(domain).build();
 
-                response = client.getCustomDictionary(request) ;
-
+                CallOptions.Key<String> metaDataKey = CallOptions.Key.create("api-key");
+                response = client.withOption(metaDataKey,api_key).getCustomDictionary(request);
             } catch (StatusRuntimeException e) {
                 LOGGER.warning(e.getMessage());
                 return null;
@@ -104,12 +105,12 @@ public class CustomDictionaryServiceClient extends ClientBase {
         return res != null ? res.getDict() : null;
     }
 
-    public Boolean update(String domain, Set<String> np, Set<String> cp, Set<String> cp_caret, Set<String> vv, Set<String> va ) {
+    public Boolean update(String domain, Set<String> np, Set<String> cp, Set<String> cp_caret, Set<String> vv, Set<String> va, String api_key ) {
         UpdateCustomDictionaryResponse res = AccessController.doPrivileged((PrivilegedAction<UpdateCustomDictionaryResponse>) () -> {
             UpdateCustomDictionaryResponse response = null;
             try {
                 if( client == null )
-                    client = CustomDictionaryServiceGrpc.newBlockingStub(loadChannel());
+                    client = CustomDictionaryServiceGrpc.newBlockingStub(loadChannel(api_key));
                 
                 UpdateCustomDictionaryRequest.Builder builder = UpdateCustomDictionaryRequest.newBuilder();
                 
@@ -124,7 +125,8 @@ public class CustomDictionaryServiceClient extends ClientBase {
                                                         .setDict(dict_builder)
                                                         .build();
 
-                response = client.updateCustomDictionary(request);
+                CallOptions.Key<String> metaDataKey = CallOptions.Key.create("api-key");
+                response = client.withOption(metaDataKey,api_key).updateCustomDictionary(request);
 
             } catch (StatusRuntimeException e) {
                 LOGGER.warning(e.getMessage());
@@ -138,18 +140,18 @@ public class CustomDictionaryServiceClient extends ClientBase {
     }
 
 
-    public List<String> remove_all() {
+    public List<String> remove_all(String api_key) {
         RemoveCustomDictionariesResponse res = AccessController.doPrivileged((PrivilegedAction<RemoveCustomDictionariesResponse>) () -> {
             RemoveCustomDictionariesResponse response = null;
             try {
                 if( client == null )
-                    client = CustomDictionaryServiceGrpc.newBlockingStub(loadChannel());
+                    client = CustomDictionaryServiceGrpc.newBlockingStub(loadChannel(api_key));
                 
                 RemoveCustomDictionariesRequest.Builder builder = RemoveCustomDictionariesRequest.newBuilder();
                 RemoveCustomDictionariesRequest request = builder.setAll(true)
                                                         .build();
-
-                response = client.removeCustomDictionaries(request);
+                CallOptions.Key<String> metaDataKey = CallOptions.Key.create("api-key");
+                response = client.withOption(metaDataKey,api_key).removeCustomDictionaries(request);
 
             } catch (StatusRuntimeException e) {
                 LOGGER.warning(e.getMessage());
@@ -163,19 +165,19 @@ public class CustomDictionaryServiceClient extends ClientBase {
     }
 
 
-    public List<String> remove(List<String> domains) {
+    public List<String> remove(List<String> domains, String api_key) {
         RemoveCustomDictionariesResponse res = AccessController.doPrivileged((PrivilegedAction<RemoveCustomDictionariesResponse>) () -> {
             RemoveCustomDictionariesResponse response = null;
             try {
                 if( client == null )
-                    client = CustomDictionaryServiceGrpc.newBlockingStub(loadChannel());
+                    client = CustomDictionaryServiceGrpc.newBlockingStub(loadChannel(api_key));
                 
                 RemoveCustomDictionariesRequest.Builder builder = RemoveCustomDictionariesRequest.newBuilder();
                 RemoveCustomDictionariesRequest request = builder.setAll(false)
                                                         .addAllDomainNames(domains)
                                                         .build();
-
-                response = client.removeCustomDictionaries(request);
+                CallOptions.Key<String> metaDataKey = CallOptions.Key.create("api-key");
+                response = client.withOption(metaDataKey,api_key).removeCustomDictionaries(request);
 
             } catch (StatusRuntimeException e) {
                 LOGGER.warning(e.getMessage());
@@ -190,7 +192,7 @@ public class CustomDictionaryServiceClient extends ClientBase {
 
 
      /* (non-Javadoc)
-     * @see ai.bareun.nlp.ClientBase#shutdownChannel()
+     * @see ai.bareun.protos.nlp.ClientBase#shutdownChannel()
      */
     @Override
     public void shutdownChannel() {

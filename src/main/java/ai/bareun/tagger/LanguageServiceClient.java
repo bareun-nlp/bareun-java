@@ -1,12 +1,13 @@
 package ai.bareun.tagger;
 
-import bareun.ai.AnalyzeSyntaxRequest;
-import bareun.ai.AnalyzeSyntaxResponse;
-import bareun.ai.Document;
-import bareun.ai.EncodingType;
-import bareun.ai.LanguageServiceGrpc;
+import ai.bareun.protos.AnalyzeSyntaxRequest;
+import ai.bareun.protos.AnalyzeSyntaxResponse;
+import ai.bareun.protos.Document;
+import ai.bareun.protos.EncodingType;
+import ai.bareun.protos.LanguageServiceGrpc;
 import io.grpc.ManagedChannel;
 import io.grpc.StatusRuntimeException;
+import io.grpc.CallOptions;
 
 import java.security.AccessController;
 import java.security.PrivilegedAction;
@@ -38,14 +39,12 @@ public class LanguageServiceClient extends ClientBase {
     public LanguageServiceClient( ManagedChannel channel) {
         super(channel);
     }
-
-    
     /** 
      * @param text
      * @return AnalyzeSyntaxResponse
      */
-    public AnalyzeSyntaxResponse analyze_syntax(String text) {
-        return analyze_syntax(text, "");
+    public AnalyzeSyntaxResponse analyze_syntax(String text, String api_key) {
+        return analyze_syntax(text, "",api_key);
     }
 
     
@@ -54,8 +53,8 @@ public class LanguageServiceClient extends ClientBase {
      * @param domain
      * @return AnalyzeSyntaxResponse
      */
-    public AnalyzeSyntaxResponse analyze_syntax(String text, String domain) {
-        return analyze_syntax(text, domain, false);
+    public AnalyzeSyntaxResponse analyze_syntax(String text, String domain, String api_key) {
+        return analyze_syntax(text, domain, true, api_key);
     }
 
     
@@ -65,27 +64,26 @@ public class LanguageServiceClient extends ClientBase {
      * @param auto_split
      * @return AnalyzeSyntaxResponse
      */
-    public AnalyzeSyntaxResponse analyze_syntax(String text, String domain, Boolean auto_split) {   
+    public AnalyzeSyntaxResponse analyze_syntax(String text, String domain, Boolean auto_split, String api_key) {
         lastResponse = null;
         if( text == null || text.isEmpty() ) return lastResponse;
         lastResponse = AccessController.doPrivileged((PrivilegedAction<AnalyzeSyntaxResponse>) () -> {
             AnalyzeSyntaxResponse response = null;
             try {
                 if( client == null )
-                    client = LanguageServiceGrpc.newBlockingStub(loadChannel());
+                    client = LanguageServiceGrpc.newBlockingStub(loadChannel(api_key));
                 LOGGER.setLevel(Level.INFO);
                 LOGGER.info("analyze - '"+text+"'");
                 Document document = Document.newBuilder().setContent(text).setLanguage("ko-KR").build();
 
-                bareun.ai.AnalyzeSyntaxRequest.Builder builder = AnalyzeSyntaxRequest.newBuilder();
+                ai.bareun.protos.AnalyzeSyntaxRequest.Builder builder = AnalyzeSyntaxRequest.newBuilder();
                 if( domain != null && !domain.isEmpty())
                     builder.setCustomDomain(domain);
                 AnalyzeSyntaxRequest request = builder.setDocument(document)
                                                 .setEncodingType(EncodingType.UTF32)
                                                 .build();
-            
-                response = client.analyzeSyntax(request);
-
+                CallOptions.Key<String> metaDataKey = CallOptions.Key.create("api-key");
+                response = client.withOption(metaDataKey,api_key).analyzeSyntax(request);
             } catch (StatusRuntimeException e) {
                 LOGGER.warning(e.getMessage());
                 LOGGER.warning(text);
@@ -111,7 +109,7 @@ public class LanguageServiceClient extends ClientBase {
     }
 
     /* (non-Javadoc)
-     * @see ai.bareun.nlp.ClientBase#shutdownChannel()
+     * @see ai.bareun.protos.nlp.ClientBase#shutdownChannel()
      */
     @Override
     public void shutdownChannel() {
