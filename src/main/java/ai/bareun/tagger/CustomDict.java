@@ -23,7 +23,6 @@ public class CustomDict extends CustomDictionaryServiceClient {
     protected Set<String> vv_set = new HashSet<String>();
     protected Set<String> va_set = new HashSet<String>();
 
-        
     public static Set<String> read_dict_file(String fn) {
         Set<String> ret = new HashSet<String>();
 
@@ -31,71 +30,75 @@ public class CustomDict extends CustomDictionaryServiceClient {
             BufferedReader inFile = new BufferedReader(new FileReader(fn));
 
             String sLine = null;
-            while( (sLine = inFile.readLine()) != null ) {
-                if( sLine.startsWith("#") ) continue;
+            while ((sLine = inFile.readLine()) != null) {
+                if (sLine.startsWith("#"))
+                    continue;
                 sLine = sLine.trim();
-                if( sLine.length() > 0 )
+                if (sLine.length() > 0)
                     ret.add(sLine);
             }
             inFile.close();
-        } catch(FileNotFoundException e) {
+        } catch (FileNotFoundException e) {
             e.printStackTrace();
             LOGGER.warning(e.getMessage());
-        } catch(IOException e) {
+        } catch (IOException e) {
             e.printStackTrace();
-            LOGGER.warning(e.getMessage());    
+            LOGGER.warning(e.getMessage());
         }
         return ret;
     }
 
     public CustomDict(String domain, String api_key) {
         super();
-        _init(domain,api_key);
+        _init(domain, api_key);
     }
 
     public CustomDict(String domain, String host, String api_key) {
-        super(host);  
-        _init(domain,api_key);      
+        super(host);
+        _init(domain, api_key);
     }
 
     public CustomDict(String domain, String host, int port, String api_key) {
         super(host, port);
-        _init(domain,api_key);
+        _init(domain, api_key);
     }
 
     public CustomDict(String domain, Host host, String api_key) {
         super(host);
-        _init(domain,api_key);
+        _init(domain, api_key);
     }
 
     public CustomDict(String domain, ManagedChannel channel, String api_key) {
         super(channel);
-        _init(domain,api_key);
+        _init(domain, api_key);
     }
 
-    
     private void _init(String domain, String api_key) {
-        if( domain == null || domain.isEmpty() ) 
+        if (domain == null || domain.isEmpty())
             throw new NullPointerException();
-        
+
         this.domain = domain;
         this.api_key = api_key;
     }
 
-    
     public Set<String> getSet(String set_name) {
-        switch(set_name) {
-            case "np_set" : return np_set;
-            case "cp_set" : return cp_set;
-            case "cp_caret_set" : return cp_caret_set;
-            case "vv_set" : return vv_set;
-            case "va_set" : return va_set;
-            default : return null;
+        switch (set_name) {
+            case "np_set":
+                return np_set;
+            case "cp_set":
+                return cp_set;
+            case "cp_caret_set":
+                return cp_caret_set;
+            case "vv_set":
+                return vv_set;
+            case "va_set":
+                return va_set;
+            default:
+                return null;
         }
     }
 
-    
-    /** 
+    /**
      * @param fn
      * @return Integer
      */
@@ -103,8 +106,8 @@ public class CustomDict extends CustomDictionaryServiceClient {
         np_set = read_dict_file(fn);
         return np_set.size();
     }
-    
-    /** 
+
+    /**
      * @param fn
      * @return Integer
      */
@@ -112,8 +115,8 @@ public class CustomDict extends CustomDictionaryServiceClient {
         cp_set = read_dict_file(fn);
         return cp_set.size();
     }
-    
-    /** 
+
+    /**
      * @param fn
      * @return Integer
      */
@@ -122,8 +125,7 @@ public class CustomDict extends CustomDictionaryServiceClient {
         return cp_caret_set.size();
     }
 
-    
-    /** 
+    /**
      * @param fn
      * @return Integer
      */
@@ -132,8 +134,7 @@ public class CustomDict extends CustomDictionaryServiceClient {
         return vv_set.size();
     }
 
-    
-    /** 
+    /**
      * @param fn
      * @return Integer
      */
@@ -142,56 +143,49 @@ public class CustomDict extends CustomDictionaryServiceClient {
         return va_set.size();
     }
 
-    
-    /** 
+    /**
      * @param dict_set
      */
-    public void copy_np_set( Set<String> dict_set ) {
+    public void copy_np_set(Set<String> dict_set) {
         np_set = dict_set;
     }
 
-    
-    /** 
+    /**
      * @param dict_set
      */
-    public void copy_cp_set( Set<String> dict_set ) {
+    public void copy_cp_set(Set<String> dict_set) {
         cp_set = dict_set;
     }
 
-    
-    /** 
+    /**
      * @param dict_set
      */
-    public void copy_cp_caret_set( Set<String> dict_set ) {
+    public void copy_cp_caret_set(Set<String> dict_set) {
         cp_caret_set = dict_set;
     }
 
-    
-    /** 
+    /**
      * @param dict_set
      */
-    public void copy_vv_set( Set<String> dict_set ) {
+    public void copy_vv_set(Set<String> dict_set) {
         vv_set = dict_set;
     }
 
-    
-    /** 
+    /**
      * @param dict_set
      */
-    public void copy_va_set( Set<String> dict_set ) {
+    public void copy_va_set(Set<String> dict_set) {
         va_set = dict_set;
     }
 
-    
-    /** 
+    /**
      * @return Boolean
      */
     public Boolean update() {
         return super.update(domain, np_set, cp_set, cp_caret_set, vv_set, va_set, this.api_key);
-    } 
+    }
 
-    
-    /** 
+    /**
      * @return CustomDictionary
      */
     public CustomDictionary get() {
@@ -209,8 +203,7 @@ public class CustomDict extends CustomDictionaryServiceClient {
 
     }
 
-    
-    /** 
+    /**
      * @return List<String>
      */
     public List<String> clear() {
@@ -222,6 +215,6 @@ public class CustomDict extends CustomDictionaryServiceClient {
 
         List<String> domains = new ArrayList<>();
         domains.add(domain);
-        return remove( domains, this.api_key );
+        return remove(domains, this.api_key);
     }
 }

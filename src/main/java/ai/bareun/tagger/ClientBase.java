@@ -23,26 +23,28 @@ public class ClientBase {
     public static class Host {
         public String host;
         public int port;
+
         public Host(String host, int port) {
             this.host = host;
             this.port = port;
         }
+
         public Host(String host) {
-            if( host.indexOf(":") >= 0 ) {
+            if (host.indexOf(":") >= 0) {
                 String[] arr = host.split(":");
                 this.host = arr[0];
-                this.port = Integer.parseInt( arr[1] );
-            }
-            else {
+                this.port = Integer.parseInt(arr[1]);
+            } else {
                 this.host = host;
                 this.port = DEF_PORT;
             }
         }
     }
+
     protected Host host;
 
     public ClientBase() {
-        this(DEF_ADDRESS, DEF_PORT)   ;
+        this(DEF_ADDRESS, DEF_PORT);
     }
 
     public ClientBase(String host) {
@@ -61,32 +63,33 @@ public class ClientBase {
         this.channel = channel;
     }
 
-    protected class serviceClientInterceptor implements ClientInterceptor{
+    protected class serviceClientInterceptor implements ClientInterceptor {
         String api_key = "";
+
         serviceClientInterceptor(String api_key) {
             this.api_key = api_key;
         }
-        
+
         @Override
-        public <ReqT, RespT> ClientCall<ReqT, RespT>
-        interceptCall(MethodDescriptor<ReqT, RespT> method, CallOptions callOptions, Channel next) {
-           return new 
-           ForwardingClientCall.SimpleForwardingClientCall<ReqT, RespT>(next.newCall(method, callOptions)) {
-              @Override
-              public void start(Listener<RespT>responseListener, Metadata headers) {
-                 headers.put(Metadata.Key.of("api-key", ASCII_STRING_MARSHALLER), api_key);
-                 super.start(responseListener, headers);
-              }
-           };
+        public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(MethodDescriptor<ReqT, RespT> method,
+                CallOptions callOptions, Channel next) {
+            return new ForwardingClientCall.SimpleForwardingClientCall<ReqT, RespT>(next.newCall(method, callOptions)) {
+                @Override
+                public void start(Listener<RespT> responseListener, Metadata headers) {
+                    headers.put(Metadata.Key.of("api-key", ASCII_STRING_MARSHALLER), api_key);
+                    super.start(responseListener, headers);
+                }
+            };
         }
-     }
+    }
 
     public ManagedChannel getChannel() {
         return channel;
     }
 
     public ManagedChannel loadChannel(String api_key) {
-        channel = ManagedChannelBuilder.forAddress(host.host, host.port).usePlaintext().intercept(new serviceClientInterceptor(api_key)).build();
+        channel = ManagedChannelBuilder.forAddress(host.host, host.port).usePlaintext()
+                .intercept(new serviceClientInterceptor(api_key)).build();
         return channel;
     }
 
@@ -97,13 +100,14 @@ public class ClientBase {
 
     public static String toJson(MessageOrBuilder obj) {
         String jsonString = "";
-        
-        if( obj == null ) return jsonString;
+
+        if (obj == null)
+            return jsonString;
         try {
-            jsonString = JsonFormat.printer().includingDefaultValueFields().print(obj);            
-        } catch(Exception e) {
+            jsonString = JsonFormat.printer().includingDefaultValueFields().print(obj);
+        } catch (Exception e) {
             e.printStackTrace();
         }
-        return jsonString;  
+        return jsonString;
     }
 }

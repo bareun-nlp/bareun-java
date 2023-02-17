@@ -6,7 +6,7 @@
 
   <groupId>ai.bareun.tagger</groupId>
   <artifactId>bareun</artifactId>
-  <version>1.1.0</version>
+  <version>1.2.0</version>
   <packaging>jar</packaging>
   <name>bareun</name>
   <description>Java client for bareun</description>
@@ -42,7 +42,7 @@
     </distributionManagement>
 
     <properties>
-        <java.version>1.9</java.version>
+        <java.version>1.8</java.version>
         <org.slf4j.version>1.7.7</org.slf4j.version>
         <maven.compiler.plugin.version>3.5.1</maven.compiler.plugin.version>
         <maven.compiler.source>1.8</maven.compiler.source>
@@ -163,20 +163,6 @@
 
 
     </dependencies>
-    <reporting>
-        <plugins>
-            <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-javadoc-plugin</artifactId>
-                <version>3.4.1</version>
-                <configuration>                
-                    <show>private</show>
-                    <nohelp>true</nohelp>
-                    <excludePackageNames>bareun.ai.*:io.grpc.*</excludePackageNames>                    
-                </configuration>
-            </plugin>
-        </plugins>       
-    </reporting>
 
     <build>
         <extensions>
@@ -232,8 +218,9 @@
                 <executions>
                     <execution>
                         <id>attach-sources</id>
+                        <phase>verify</phase>
                         <goals>
-                            <goal>jar-no-fork</goal>
+                            <goal>jar</goal>
                         </goals>
                     </execution>
                 </executions>
@@ -246,15 +233,16 @@
                         <descriptor>${basedir}/src/main/assemblies/plugin.xml</descriptor>
                     </descriptors>
                     <outputDirectory>${project.build.directory}/releases/</outputDirectory>
-                    <appendAssemblyId>false</appendAssemblyId>
                     <archive>
                         <manifest>
                             <mainClass>fully.qualified.MainClass</mainClass>
                         </manifest>
                     </archive>
+                    <appendAssemblyId>false</appendAssemblyId>
                 </configuration>
                 <executions>
                     <execution>
+                        <id>make-assembly</id>
                         <phase>package</phase>
                         <goals>
                             <goal>single</goal>
@@ -263,18 +251,37 @@
                 </executions>
             </plugin>
             <plugin>
-                <groupId>org.apache.maven.plugins</groupId>
-                <artifactId>maven-javadoc-plugin</artifactId>
-                <version>3.4.1</version>
+                <artifactId>maven-deploy-plugin</artifactId>
+                <version>2.8.2</version>
+                <executions>
+                    <execution>
+                        <id>deploy</id>
+                        <phase>deploy</phase>                    
+                        <goals>
+                            <goal>deploy</goal>
+                        </goals>                 
+                    </execution>
+                </executions>
                 <configuration>
-                    <show>public</show>
-                    <excludePackageNames>bareun.ai.*:io.grpc.*</excludePackageNames>  
+                    <arguments>-Dmaven.javadoc.skip=true</arguments>
                 </configuration>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-jar-plugin</artifactId>
-                <version>2.3.2</version>
+                <version>3.1.0</version>
+                <executions>
+                    <execution>
+                        <id>javadoc-jar</id>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                        <configuration>
+                            <classifier>javadoc</classifier>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
@@ -328,7 +335,7 @@
                                 <id>esbase-java-sources</id>
                                 <phase>package</phase>
                                 <goals>
-                                    <goal>jar-no-fork</goal>
+                                    <goal>jar</goal>
                                 </goals>
                             </execution>
                         </executions>
