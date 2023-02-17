@@ -37,7 +37,7 @@ public class Tagger {
         this.host = host;
         this.domain = domain;
         this.api_key = api_key;
-        client = new LanguageServiceClient(host);
+        client = new LanguageServiceClient(host, api_key);
     }
 
     public Tagger(ManagedChannel channel, String api_key) {
@@ -47,7 +47,7 @@ public class Tagger {
     public Tagger(ManagedChannel channel, String domain, String api_key) {
         this.domain = domain;
         this.api_key = api_key;
-        client = new LanguageServiceClient(channel);
+        client = new LanguageServiceClient(channel, api_key);
     }
 
     /**
@@ -89,7 +89,7 @@ public class Tagger {
         if (phrase == null || phrase.isEmpty())
             return new Tagged();
 
-        return new Tagged(phrase, client.analyze_syntax(phrase, domain, auto_split, this.api_key));
+        return new Tagged(phrase, client.analyze_syntax(phrase, domain, auto_split));
     }
 
     /**

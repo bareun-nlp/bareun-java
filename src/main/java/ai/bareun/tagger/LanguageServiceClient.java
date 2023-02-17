@@ -20,32 +20,32 @@ public class LanguageServiceClient extends ClientBase {
 
     protected AnalyzeSyntaxResponse lastResponse;
 
-    public LanguageServiceClient() {
-        super();
+    public LanguageServiceClient(String api_key) {
+        super(api_key);
     }
 
-    public LanguageServiceClient(String host) {
-        super(host);
+    public LanguageServiceClient(String host, String api_key) {
+        super(host, api_key);
     }
 
-    public LanguageServiceClient(String host, int port) {
-        super(host, port);
+    public LanguageServiceClient(String host, int port, String api_key) {
+        super(host, port, api_key);
     }
 
-    public LanguageServiceClient(Host host) {
-        super(host);
+    public LanguageServiceClient(Host host, String api_key) {
+        super(host, api_key);
     }
 
-    public LanguageServiceClient(ManagedChannel channel) {
-        super(channel);
+    public LanguageServiceClient(ManagedChannel channel, String api_key) {
+        super(channel, api_key);
     }
 
     /**
      * @param text
      * @return AnalyzeSyntaxResponse
      */
-    public AnalyzeSyntaxResponse analyze_syntax(String text, String api_key) {
-        return analyze_syntax(text, "", api_key);
+    public AnalyzeSyntaxResponse analyze_syntax(String text) {
+        return analyze_syntax(text, "");
     }
 
     /**
@@ -53,8 +53,8 @@ public class LanguageServiceClient extends ClientBase {
      * @param domain
      * @return AnalyzeSyntaxResponse
      */
-    public AnalyzeSyntaxResponse analyze_syntax(String text, String domain, String api_key) {
-        return analyze_syntax(text, domain, true, api_key);
+    public AnalyzeSyntaxResponse analyze_syntax(String text, String domain) {
+        return analyze_syntax(text, domain, true);
     }
 
     /**
@@ -63,7 +63,7 @@ public class LanguageServiceClient extends ClientBase {
      * @param auto_split
      * @return AnalyzeSyntaxResponse
      */
-    public AnalyzeSyntaxResponse analyze_syntax(String text, String domain, Boolean auto_split, String api_key) {
+    public AnalyzeSyntaxResponse analyze_syntax(String text, String domain, Boolean auto_split) {
         lastResponse = null;
         if (text == null || text.isEmpty())
             return lastResponse;

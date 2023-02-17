@@ -44,8 +44,8 @@ public class AppTest
     public void shouldAnswerWithTrue()
     {
 
-        LanguageServiceClient conn = new ai.bareun.tagger.LanguageServiceClient("nlp.bareun.ai");
-        AnalyzeSyntaxResponse response =  conn.analyze_syntax("아버지가 방에 들어가신다.","koba-99CAAKC-UPDS66A-QR9QPVF-0AYPOCA");
+        LanguageServiceClient conn = new ai.bareun.tagger.LanguageServiceClient("nlp.bareun.ai","koba-99CAAKC-UPDS66A-QR9QPVF-0AYPOCA");
+        AnalyzeSyntaxResponse response =  conn.analyze_syntax("아버지가 방에 들어가신다.");
         String str = conn.toJson();
         assertTrue( !str.isEmpty() );
         logger.info(str);
@@ -126,8 +126,6 @@ public class AppTest
     public void testCustomDict() {
         CustomDict dict = new CustomDict("game", "nlp.bareun.ai","koba-99CAAKC-UPDS66A-QR9QPVF-0AYPOCA");
 
-       
-
         log("testCustomDict()");
         log("read file.");
 
@@ -147,7 +145,7 @@ public class AppTest
         log(dict.getSet("np_set"));
 
         log("get list ");
-        List<CustomDictionaryMeta> list = dict.get_list("koba-99CAAKC-UPDS66A-QR9QPVF-0AYPOCA");
+        List<CustomDictionaryMeta> list = dict.get_list();
         for(CustomDictionaryMeta meta: list) {
             log(meta.getDomainName());
         }

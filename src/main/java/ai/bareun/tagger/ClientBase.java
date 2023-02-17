@@ -16,7 +16,7 @@ import static io.grpc.Metadata.ASCII_STRING_MARSHALLER;
 
 public class ClientBase {
     protected ManagedChannel channel;
-
+    protected String api_key = "";
     public final static int DEF_PORT = 5656;
     public final static String DEF_ADDRESS = "nlp.bareun.ai"; // "10.3.8.44";
 
@@ -43,33 +43,32 @@ public class ClientBase {
 
     protected Host host;
 
-    public ClientBase() {
-        this(DEF_ADDRESS, DEF_PORT);
+    public ClientBase(String api_key) {
+        this(DEF_ADDRESS, DEF_PORT, api_key);
+        this.api_key = api_key;
     }
 
-    public ClientBase(String host) {
+    public ClientBase(String host,String api_key) {
         this.host = new Host(host);
+        this.api_key = api_key;
     }
 
-    public ClientBase(String host, int port) {
+    public ClientBase(String host, int port,String api_key) {
         this.host = new Host(host, port);
+        this.api_key = api_key;
     }
 
-    public ClientBase(Host host) {
+    public ClientBase(Host host, String api_key) {
         this.host = host;
+        this.api_key = api_key;
     }
 
-    public ClientBase(ManagedChannel channel) {
+    public ClientBase(ManagedChannel channel, String api_key) {
         this.channel = channel;
+        this.api_key = api_key;
     }
 
     protected class serviceClientInterceptor implements ClientInterceptor {
-        String api_key = "";
-
-        serviceClientInterceptor(String api_key) {
-            this.api_key = api_key;
-        }
-
         @Override
         public <ReqT, RespT> ClientCall<ReqT, RespT> interceptCall(MethodDescriptor<ReqT, RespT> method,
                 CallOptions callOptions, Channel next) {
@@ -89,7 +88,7 @@ public class ClientBase {
 
     public ManagedChannel loadChannel(String api_key) {
         channel = ManagedChannelBuilder.forAddress(host.host, host.port).usePlaintext()
-                .intercept(new serviceClientInterceptor(api_key)).build();
+                .intercept(new serviceClientInterceptor()).build();
         return channel;
     }
 

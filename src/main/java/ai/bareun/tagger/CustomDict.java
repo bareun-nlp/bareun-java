@@ -16,7 +16,6 @@ import java.util.logging.Logger;
 public class CustomDict extends CustomDictionaryServiceClient {
     private final static Logger LOGGER = Logger.getGlobal();
     protected String domain;
-    protected String api_key;
     protected Set<String> cp_set = new HashSet<String>();
     protected Set<String> np_set = new HashSet<String>();
     protected Set<String> cp_caret_set = new HashSet<String>();
@@ -49,7 +48,7 @@ public class CustomDict extends CustomDictionaryServiceClient {
     }
 
     public CustomDict(String domain, String api_key) {
-        super();
+        super(api_key);
         _init(domain, api_key);
     }
 
@@ -59,26 +58,25 @@ public class CustomDict extends CustomDictionaryServiceClient {
     }
 
     public CustomDict(String domain, String host, int port, String api_key) {
-        super(host, port);
+        super(host, port, api_key);
         _init(domain, api_key);
     }
 
     public CustomDict(String domain, Host host, String api_key) {
-        super(host);
+        super(host, api_key);
         _init(domain, api_key);
     }
 
     public CustomDict(String domain, ManagedChannel channel, String api_key) {
-        super(channel);
+        super(channel, api_key);
         _init(domain, api_key);
     }
 
     private void _init(String domain, String api_key) {
         if (domain == null || domain.isEmpty())
             throw new NullPointerException();
-
+        super.api_key = api_key;
         this.domain = domain;
-        this.api_key = api_key;
     }
 
     public Set<String> getSet(String set_name) {
@@ -182,14 +180,14 @@ public class CustomDict extends CustomDictionaryServiceClient {
      * @return Boolean
      */
     public Boolean update() {
-        return super.update(domain, np_set, cp_set, cp_caret_set, vv_set, va_set, this.api_key);
+        return super.update(domain, np_set, cp_set, cp_caret_set, vv_set, va_set);
     }
 
     /**
      * @return CustomDictionary
      */
     public CustomDictionary get() {
-        return super.get(domain, this.api_key);
+        return super.get(domain);
     }
 
     public void load() {
@@ -215,6 +213,6 @@ public class CustomDict extends CustomDictionaryServiceClient {
 
         List<String> domains = new ArrayList<>();
         domains.add(domain);
-        return remove(domains, this.api_key);
+        return remove(domains);
     }
 }

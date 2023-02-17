@@ -41,27 +41,27 @@ public class CustomDictionaryServiceClient extends ClientBase {
 
     }
 
-    public CustomDictionaryServiceClient() {
-        super();
+    public CustomDictionaryServiceClient(String api_key) {
+        super(api_key);
     }
 
-    public CustomDictionaryServiceClient(String host) {
-        super(host);
+    public CustomDictionaryServiceClient(String host, String api_key) {
+        super(host, api_key);
     }
 
-    public CustomDictionaryServiceClient(String host, int port) {
-        super(host, port);
+    public CustomDictionaryServiceClient(String host, int port, String api_key) {
+        super(host, port, api_key);
     }
 
-    public CustomDictionaryServiceClient(Host host) {
-        super(host);
+    public CustomDictionaryServiceClient(Host host, String api_key) {
+        super(host, api_key);
     }
 
-    public CustomDictionaryServiceClient(ManagedChannel channel) {
-        super(channel);
+    public CustomDictionaryServiceClient(ManagedChannel channel, String api_key) {
+        super(channel, api_key);
     }
 
-    public List<CustomDictionaryMeta> get_list(String api_key) {
+    public List<CustomDictionaryMeta> get_list() {
         GetCustomDictionaryListResponse res = AccessController
                 .doPrivileged((PrivilegedAction<GetCustomDictionaryListResponse>) () -> {
                     GetCustomDictionaryListResponse response = null;
@@ -82,7 +82,7 @@ public class CustomDictionaryServiceClient extends ClientBase {
         return res != null ? res.getDomainDictsList() : null;
     }
 
-    public CustomDictionary get(String domain, String api_key) {
+    public CustomDictionary get(String domain) {
         GetCustomDictionaryResponse res = AccessController
                 .doPrivileged((PrivilegedAction<GetCustomDictionaryResponse>) () -> {
                     GetCustomDictionaryResponse response = null;
@@ -107,7 +107,7 @@ public class CustomDictionaryServiceClient extends ClientBase {
     }
 
     public Boolean update(String domain, Set<String> np, Set<String> cp, Set<String> cp_caret, Set<String> vv,
-            Set<String> va, String api_key) {
+            Set<String> va) {
         UpdateCustomDictionaryResponse res = AccessController
                 .doPrivileged((PrivilegedAction<UpdateCustomDictionaryResponse>) () -> {
                     UpdateCustomDictionaryResponse response = null;
@@ -142,7 +142,7 @@ public class CustomDictionaryServiceClient extends ClientBase {
         return res != null && res.getUpdatedDomainName().equals(domain);
     }
 
-    public List<String> remove_all(String api_key) {
+    public List<String> remove_all() {
         RemoveCustomDictionariesResponse res = AccessController
                 .doPrivileged((PrivilegedAction<RemoveCustomDictionariesResponse>) () -> {
                     RemoveCustomDictionariesResponse response = null;
@@ -167,7 +167,7 @@ public class CustomDictionaryServiceClient extends ClientBase {
         return res != null ? new ArrayList<String>(res.getDeletedDomainNamesMap().keySet()) : null;
     }
 
-    public List<String> remove(List<String> domains, String api_key) {
+    public List<String> remove(List<String> domains) {
         RemoveCustomDictionariesResponse res = AccessController
                 .doPrivileged((PrivilegedAction<RemoveCustomDictionariesResponse>) () -> {
                     RemoveCustomDictionariesResponse response = null;
