@@ -1,0 +1,391 @@
+// Copyright 2024-present BAIKAL AI Inc.
+
+syntax = "proto3";
+
+package bareun;
+
+import "bareun/lang_common.proto";
+
+option go_package = "bareun.ai/lang/bareun/genproto/bareun;svc";
+option java_package = "ai.bareun.protos";
+option java_multiple_files = true;
+option java_outer_classname = "RevisionServiceProto";
+
+
+// 다양한 목적에 맞는 문장 교정 서비스
+// 이 서비스는 다른 과금 체계를 가지므로 다양하게 재구성한다.
+service RevisionService {
+  // 맞춤법 교정을 수행한다.
+  rpc CorrectError(CorrectErrorRequest) returns (CorrectErrorResponse) {}
+
+  // 맞춤법 교정을 실시간으로 진행한다.
+  // 웹을 고려했을 때, 하나의 grpc 또는 connect rpc를 해보면
+  // 
+  rpc StreamCorrectError(StreamCorrectErrorRequest) returns (stream StreamCorrectErrorResponse) {}
+
+  // TODO
+  // 맞춤법 교정을 큰 문서단위로 진행한다.
+}
+
+// =================================
+// GRAMMER ERROR CORRECTION
+// =================================
+
+// 맞춤법 교정기 설정
+// 맞춤법 교정기 설정은 아무런 설정을 하지 않을 경우에 기본값을 설정하는 것을 기준으로
+// 설정한다.
+// (참고) 이 옵션은 구현 과정에서 지속적으로 추가될 수 있다.
+message RevisionConfig {
+  // split sentence 비활성화하면 문장 단위 분할을 하지 않는다.
+  bool disable_split_sentence = 1;
+
+  // 복합명사 분리 사전 적용 비활성화
+  bool disable_caret_spacing = 2;
+
+  // 보조 용언 띄어쓰기 비활성화
+  bool disable_vx_spacing = 3;
+
+  // 주어진 문장을 기사 등의 제목으로 취급, 기본값 false
+  bool treat_as_title = 4;
+
+  // 제약된 구두점 사용 기능 활성화
+  bool enable_limited_punctuation = 5;
+
+  // 혼동모델 비활성화 (기본값 false, true로 설정시 혼동모델 호출 안함)
+  bool disable_confusion = 6;
+
+  // 공백을 제거하는 것을 활성화하기
+  bool enable_cleanup_whitespace = 11;
+
+  // 오타 교정 비활성화 (기본값 false, true로 설정시 오탈자 교정 안함)
+  bool disable_typo_correction = 12;
+
+  // 문장 단위 점검 활성화
+  bool enable_sentence_check = 21;
+}
+
+// 맞춤법 교정 요청 메시지
+message CorrectErrorRequest {
+  // 입력 문서
+  Document document = 1;
+
+  // 오프셋을 계산하기 위한 인코딩 타입
+  EncodingType encoding_type = 2;
+
+
+  // 커스텀 사전 도메인 정보, 하나만 지정 가능합니다.
+  // v4.0에서는 폐기될 예정입니다. 새로운 custom_dict_names를 사용해주세요.
+  // 새로운 custom_dict_names에 값이 들어있는 경우, 이 값은 무시됩니다.
+  string custom_domain = 4 [deprecated = true];
+
+  // 커스텀 사전 이름들
+  // CustomDictionaryService를 사용해서 만든 사전을 여러 개 지정한다.
+  // 하나 이상의 지정할 경우, 먼저 나오는 사전이 우선되어 사용된다.
+  repeated string custom_dict_names = 5;
+
+  // 맞춤법 교정기 적용시 옵션을 지정한다.
+  RevisionConfig config = 11;
+}
+
+// 한국어 문장 교정의 카테고리
+enum RevisionCategory {
+  // 교정 카테고리가 없음
+  UNKNOWN = 0;
+  // 교정 유형: 맞춤법 어법에 관한 사항
+  // 활용, 조사 결합, 구둣점 등
+  GRAMMER = 1;
+  // 교정 유형: 맞춤법 단어단위 규칙에 관한 사항
+  // 사이시옷, 두음법칙, 한자결합(율,률) 등
+  WORD = 2;
+  // 교정 유형: 띄어쓰기에 관한 사항
+  SPACING = 3;
+  // 교정 유형: 표준어 일반
+  STANDARD = 8;
+  // 교정 유형: 오탈자
+  TYPO = 9;
+  // 교정 유형: 외래어 표기법
+  FOREIGN_WORD = 10;
+  // 교정 유형: 혼동하기 쉬운 단어
+  CONFUSABLE_WORDS = 11;
+  // 교정 유형: 문장 단위 오류
+  SENTENCE = 12;
+  // 교정 유형: 확인 필요
+  CONFIRM = 13;
+  // 생각 중: 복잡한 후처리 작업이 필요한 경우
+  // 먼저 원문을 그대로 내보내는 게 맞다.
+  // 화면 상에서는 다른 색깔이나 텍스트 효과를 나타낸다.
+  THINKING = 14;
+}
+
+// 교정에 대한 도움말 객체
+message ReviseHelp {
+  // 도움말 ID, 고정된 도움말이 있을 수 있고, 동적으로 생성되는 도움말이 있을 수 있다.
+  string id = 1;
+  // 문장 교정의 카테고리
+  RevisionCategory category = 2;
+  // 바뀌어야 하는 이유에 대한 섧명
+  string comment = 3;
+  // 변경이 될 수 있는 문장들
+  repeated string examples = 4;
+  // 관련 규정
+  string rule_article = 5;
+}
+
+// 한개의 교정에 대한 정보
+message Revision {
+  // 수정을 제안한 토큰
+  string revised = 1;
+  // 수정에 대한 점수, 점수가 높으면 수정의 후보가 높다.
+  double score = 2;
+  // RevisionCagetory 정보
+  RevisionCategory category = 3;
+  // 수정에 대한 도움말, 인덱스 정보
+  string help_id = 4;
+
+  // 스트림 로직에서 필요한 경우 ID를 생성해서 내보낼 수 있다.
+  // 생각 중인 경우에만 생성된다.
+  optional int32 thinking_id = 100;
+}
+
+// 사용자 사전용 형태소
+enum CustomDictPos {
+  // 해당 없음
+  POS_UNK = 0;
+  // 복합명사 사전
+  POS_NNG = 1;
+  // 고유명사 사전
+  POS_NNP = 2;
+  // 복합명사 분리 사전
+  POS_NNG_CARET = 3;
+  // 동사 사전
+  POS_VV = 4;
+  // 형용사 사전
+  POS_VA = 5;
+  // 관형사 사전
+  POS_MM = 6;
+  // 부사 사전
+  POS_MAG = 7;
+  // 감탄사 사전
+  POS_IC = 8;
+}
+
+// RevisedBlock은 교정 대상인 원문과 수정된 결과, 이유, 사용자 사전 추가 정보를 담고 있다.
+//
+// - origin: 교정의 원문으로, 교정 대상이 되는 원문의 위치와 범위 정보를 담고 있다.
+// - revised: 교정 결과를 포함하며, 여러 개의 교정 후보가 있는 경우 가장 대표적인 
+//   교정 결과를 포함한다.
+// - revisions: 하나 이상의 교정 후보를 포함하며, 각 교정 결과는 점수, 카테고리, 
+//   도움말 정보를 포함한다.
+// - nested: 여러 개의 블럭이 하나로 합쳐지는 경우, 기존의 블럭들은 nested 블럭에 
+//   포함된다.
+// - lemma: 교정 대상에 대해 교정을 하지 않을 수도 있으며, 이를 사용자 사전에 
+//   추가해야 하는 경우 원형을 밝혀 추가할 수 있도록 한다.
+// - pos: 사전에 추가할 경우, 해당 단어의 형태 정보를 포함한다.
+//
+// [여러 블럭을 합치는 경우]
+// 띄어쓰기 및 붙여쓰기가 여러 블럭에 연달아 있는 경우, 그 경계가 계속해서 
+// 합쳐질 수 있다. 예를 들어, "`하지만아무도도와드리지않았다.`"의 경우, 
+// "하지만 아무도", "아무도 도와", "도와드리지", "드리지 않았다."처럼 블럭이 
+// 서로 경계에 닿아 있다. 이 경우 "`하지만아무도도와드리지않았다.`"를 하나의 
+// 블럭으로 처리한다. 이를 UI에서 계산하여 처리하는 것은 많은 노력이 필요하므로, 
+// 위의 4가지 경우를 `nested` 블럭에 포함하여 기술하도록 한다.
+//
+// [사용자 사전 후보 제시]
+// 원문에 포함된 교정 블럭에 대한 교정 후보를 제시하는 것이 적절하지 않은 경우, 
+// 사용자는 이 단어를 새로운 사전에 등록할 수 있다. 이를 위해 등록의 원본을 
+// 제시한다. 예를 들어, "신박했다"라는 어절에 대해 교정한 경우, lemma로 "신박하"를 
+// 제시하고 "형용사"로 품사를 제시할 수 있다. 여기에는 띄어 쓴 블럭의 복합명사도 
+// 포함될 수 있다. 이 경우 "제품^품질관리^체계"처럼 대부분의 UI 처리 단위에서는 
+// 이를 세부적으로 나눠서 표현할 필요는 없지만, 포함된 블럭을 구분하여 표현하고자 
+// 하는 경우에도 이를 감안할 수 있다.
+message RevisedBlock {
+  // 교정 원문의 위치 및 원문 정보
+  // 대부분은 어절 단위이지만, nested가 있는 경우 여러 블럭이 포함될 수 있다.
+  // 원문의 한 어절에 여러 개의 교정이 있는 경우에는 이를 묶을 수도 있다.
+  TextSpan origin = 1;
+  // 교정된 결과물, 여러가지 중에 하나로서 가장 대표적인 것
+  string revised = 2;
+  // 다양한 교정 문장의 예시들
+  repeated Revision revisions = 3;
+
+  // 한 어절에 여러 개의 수정이 이뤄지거나,
+  // 서로 다른 어절의 수정이 경계를 닿아서 겹치는 경우에는
+  // 기존의 교정 블럭은 nested에 포함된다.
+  repeated RevisedBlock nested = 10;
+
+  // 사용사 사전에 추가하기 위한 기본 단위, nested가 존재하는 쓸 수 없다.
+  string lemma = 4;
+  // 사용사 사전에 추가할 품사
+  CustomDictPos pos = 5;
+
+  // 현재 블럭에 생각중인 경우가 하나 이상 있으면 표시해준다.
+  optional int32 thinking_count = 100;
+}
+
+// 교정된 하나의 문장
+message RevisedSentence {
+  // 원래 문장
+  string origin = 1;
+  // 교정된 전체 문장
+  string revised = 2;
+}
+
+// CleanUpRange 교정대상에서 불필요한 공백을 지워야할 범위
+message CleanUpRange {
+  // 위치
+  int32 offset = 1;
+  // 길이
+  int32 length = 2;
+  // 지워야할 위치에 대한 추가 정보
+  enum CleanUpPosition {
+    // 처음
+    START = 0;
+    // 끝
+    END = 1;
+    // 중간
+    MIDDLE = 2;
+  }
+  CleanUpPosition position = 3;
+}
+
+
+// 맞춤법 교정의 응답
+message CorrectErrorResponse {
+  // 원래 요청 문서
+  string origin = 1;
+  // 교정 문장 문서
+  string revised = 2;
+
+  // 수정된 결과들 하나 이상
+  repeated RevisedBlock revised_blocks = 3;
+
+  // 교정대상에서 지워야할 공백들의 목록
+  repeated CleanUpRange whitespace_cleanup_ranges = 9;
+
+  // 교정된 문장들
+  repeated RevisedSentence revised_sentences = 11;
+
+  // 교정 도움말들에 대한 정보
+  map<string, ReviseHelp> helps = 12;
+
+  // 텍스트의 언어, 만일 언어가 지정되지 않은 경우에는 자동으로 탐지하여 반환한다.
+  // 언어가 지정된 경우에는 동일한 언어를 반환한다.
+  // 이때, 언어는 ko_KR 등과 같이 사용한다.
+  string language = 99;
+  // 어절의 개수
+  int32 tokens_count = 100;
+}
+
+// 맞춤법 교정 요청 메시지
+message StreamCorrectErrorRequest {
+  // 입력 문서
+  Document document = 1;
+
+  // 오프셋을 계산하기 위한 인코딩 타입
+  EncodingType encoding_type = 2;
+
+
+  // 커스텀 사전 도메인 정보, 하나만 지정 가능합니다.
+  // v4.0에서는 폐기될 예정입니다. 새로운 custom_dict_names를 사용해주세요.
+  // 새로운 custom_dict_names에 값이 들어있는 경우, 이 값은 무시됩니다.
+  string custom_domain = 4 [deprecated = true];
+
+  // 커스텀 사전 이름들
+  // CustomDictionaryService를 사용해서 만든 사전을 여러 개 지정한다.
+  // 하나 이상의 지정할 경우, 먼저 나오는 사전이 우선되어 사용된다.
+  repeated string custom_dict_names = 5;
+
+  // 맞춤법 교정기 적용시 옵션을 지정한다.
+  RevisionConfig config = 11;
+
+  // 동시에 여러 요청이 발생할 수 있으므로 이 요청에 대해서 ID를 부여한다.
+  // 요청 ID가 비어 있으면 서버에서 생성한다.
+  // 즉 이 요청 ID를 빈 상태로 보내줘도 된다.
+  int64 req_id = 101;
+}
+
+
+// 첫번째 기본 응답
+message StreamFirstCorrectError {
+  // 원래 요청 문서
+  string origin = 1;
+  // 교정 문장 문서
+  string revised = 2;
+
+  // 수정된 결과들 하나 이상
+  repeated RevisedBlock revised_blocks = 3;
+
+  // 교정대상에서 지워야할 공백들의 목록
+  repeated CleanUpRange whitespace_cleanup_ranges = 9;
+
+  // 교정된 문장들
+  repeated RevisedSentence revised_sentences = 11;
+
+  // 교정 도움말들에 대한 정보
+  map<string, ReviseHelp> helps = 12;
+
+  // 텍스트의 언어, 만일 언어가 지정되지 않은 경우에는 자동으로 탐지하여 반환한다.
+  // 언어가 지정된 경우에는 동일한 언어를 반환한다.
+  // 이때, 언어는 ko_KR 등과 같이 사용한다.
+  string language = 99;
+
+  // 어절의 개수
+  int32 tokens_count = 100;
+
+  // 요청의 ID
+  // 추가적인 생각 중이 있는 경우에는 이 요청에 대한 ID를 생성한다.
+  // 스트리밍 방식의 요청일 때에만 사용한다.
+  int64 req_id = 201;
+  // thinking id들의 배열
+  repeated int32 thinking_ids = 101;
+}
+
+// 이전의 수정 중에서 취소가 된 경우 메시지
+message CancelledRevision {
+  // 취소할 요청의 ID
+  int64 req_id = 1;
+  // 취소할 thinking Revision
+  // 클라이언트는 해당 revision을 삭제해야 한다.
+  // 원칙은 원문을 그대로 내보내는 게 맞다.
+  int32 thinking_id = 2;
+}
+
+// 후교정된 블럭 정보
+message PostRevision {
+  // 먼저 전송된 요청의 ID
+  int64 req_id = 1;
+  // 먼저 전송된 thinking id
+  int32 thinking_id = 2;
+  // 최종 수정된 결과
+  Revision revision = 3;
+  // 최종 수정 도움말
+  ReviseHelp help = 4;
+}
+
+// 취소나 확정 전에 AI 진행 상태를 나타낸다.
+message ProgressRevision {
+  // 먼저 전송된 req_id
+  int64 req_id = 1;
+  // 먼저 전송된 thinking id
+  int32 thinking_id = 2;
+  // 생각 중임을 나타내는 메시지
+  string thinking_msg = 3;
+}
+
+// 스트림 방식의 교정 결과를 내보낸다.
+message StreamCorrectErrorResponse {
+  // 응답 메시지는 크게 4가지이다.
+  oneof res {
+    // 첫번째 교정 결과 응답
+    StreamFirstCorrectError first = 1;
+
+    // 취소된 교정 결과 응답
+    CancelledRevision cancelled = 2;
+
+    // 확정된 교정 결과 응답
+    PostRevision post = 3;
+
+    // 각 Thinking revision 단위로 생각 중 메시지를 전송
+    ProgressRevision progress = 4;
+  }
+}

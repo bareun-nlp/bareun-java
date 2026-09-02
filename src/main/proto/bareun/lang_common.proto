@@ -1,0 +1,62 @@
+// Copyright 2024-present BAIKAL AI Inc.
+
+syntax = "proto3";
+
+package bareun;
+
+option go_package = "bareun.ai/lang/bareun/genproto/bareun;svc";
+option java_package = "ai.bareun.protos";
+option java_multiple_files = true;
+option java_outer_classname = "LangCommonProto";
+
+// 텍스트 조각
+message TextSpan {
+  // 텍스트 조각의 내용
+  string content = 1;
+
+  // 텍스트 조각의 위치
+  // EncodingType에 따라서 위치의 값이 달라진다.
+  int32 begin_offset = 2;
+
+  // 길이
+  int32 length = 3;
+}
+
+//
+// Represents the input to API methods.
+message Document {
+
+  // 입력 전체의 내용
+  // 여러 문장이 입력되면 "\n"을 넣어준다.
+  string content = 2;
+
+  // 문서의 언어. 현재는 ko_KR 만 지원한다.
+  string language = 4;
+}
+
+// Represents the text encoding that the caller uses to process the output.
+// Providing an `EncodingType` is recommended because the API provides the
+// beginning offsets for various outputs, such as tokens and mentions, and
+// languages that natively use different text encodings may access offsets
+// differently.
+enum EncodingType {
+  // If `EncodingType` is not specified, encoding-dependent information (such as
+  // `begin_offset`) will be set at `-1`.
+  NONE = 0;
+
+  // Encoding-dependent information (such as `begin_offset`) is calculated based
+  // on the UTF-8 encoding of the input. C++ and Go are examples of languages
+  // that use this encoding natively.
+  UTF8 = 1;
+
+  // Encoding-dependent information (such as `begin_offset`) is calculated based
+  // on the UTF-16 encoding of the input. Java and JavaScript are examples of
+  // languages that use this encoding natively.
+  UTF16 = 2;
+
+  // Encoding-dependent information (such as `begin_offset`) is calculated based
+  // on the UTF-32 encoding of the input. Python is an example of a language
+  // that uses this encoding natively.
+  UTF32 = 3;
+}
+

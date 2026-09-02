@@ -1,0 +1,27 @@
+# 빌드와 단위 테스트를 자동으로 돌린다.
+#
+# 통합 테스트(LiveServerIT)는 BAREUN_API_KEY 가 없으면 스스로 건너뛴다.
+# 서버가 없다는 이유로 빌드가 빨개지면 아무도 보지 않게 되기 때문이다.
+name: build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        java: ['17', '21']
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: ${{ matrix.java }}
+          cache: maven
+
+      - run: mvn -B verify

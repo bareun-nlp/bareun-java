@@ -1,11 +1,11 @@
-// Copyright 2019-2023 BAIKAL AI Inc.
+// Copyright 2019-present BAIKAL AI Inc.
 //
 
 syntax = "proto3";
 
 package bareun;
 
-option go_package = "ai.bareun/proto/bareun";
+option go_package = "bareun.ai/lang/bareun/genproto/bareun;svc";
 option java_package = "ai.bareun.protos";
 option java_multiple_files = true;
 option java_outer_classname = "DictionaryCommonProto";

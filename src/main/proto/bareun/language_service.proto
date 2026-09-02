@@ -1,61 +1,38 @@
-// Copyright 2019-2023 BAIKAL AI Inc.
+
+// Copyright 2019-present BAIKAL AI Inc.
 
 syntax = "proto3";
 
 package bareun;
 
-import "google/api/annotations.proto";
-//import "google/api/client.proto";
-//import "google/api/field_behavior.proto";
+import "bareun/lang_common.proto";
 
-option go_package = "ai.bareun/proto/bareun";
-option java_package = "ai.bareun.protos";
+option go_package = "bareun.ai/lang/bareun/genproto/bareun;svc";
 option java_multiple_files = true;
 option java_outer_classname = "LanguageServiceProto";
+option java_package = "ai.bareun.protos";
 
 // 한국어에 대한 분석 서비스를 제공하는 서비스.
 service LanguageService {
-
   // 텍스트의 형태를 분석하고, 문장 경계를 파악하여 토큰 단위로 잘라낸다.
-  rpc AnalyzeSyntax (AnalyzeSyntaxRequest) returns (AnalyzeSyntaxResponse) {
-    option (google.api.http) = {
-      post: "/bareun/api/v1/analyze"
-      body: "*"
-    };
-  }
+  rpc AnalyzeSyntax(AnalyzeSyntaxRequest) returns (AnalyzeSyntaxResponse) {}
 
   // 복수의 문장을 대상으로 텍스트의 형태를 분석하고, 토큰 단위로 잘라낸다.
   // 복수의 문장에 대한 순서를 그대로 반환하고 문장을 분할하지 않는다.
-  rpc AnalyzeSyntaxList (AnalyzeSyntaxListRequest) returns (AnalyzeSyntaxListResponse) {
-      option (google.api.http) = {
-        post: "/bareun/api/v1/analyze-list"
-        body: "*"
-      };
-  }
-  
-  // 한국어의 특성에 따라서 텍스트를 분절 단뤼로 구분해 낸다.
-  rpc Tokenize (TokenizeRequest) returns (TokenizeResponse) {
-    option (google.api.http) = {
-      post: "/bareun/api/v1/tokenize"
-      body: "*"
-    };
-  }
+  rpc AnalyzeSyntaxList(AnalyzeSyntaxListRequest) returns (AnalyzeSyntaxListResponse) {}
 
+  // seg_model + tag_model 추론 결과를 후처리 없이 그대로 반환한다.
+  // 복합명사·복합동사 분해, 자동 띄어쓰기·붙여쓰기를 적용하지 않는다.
+  // 순수 모델 성능 평가, BigKinds 재태깅, WSD 개발 등 후처리 개입 없는
+  // 원시(raw) 분석 결과가 필요한 경우에 사용한다.
+  // 응답 형식은 AnalyzeSyntaxResponse와 동일하다.
+  rpc AnalyzeSyntaxRaw(AnalyzeSyntaxRawRequest) returns (AnalyzeSyntaxResponse) {}
+
+  // 한국어의 특성에 따라서 텍스트를 분절 단뤼로 구분해 낸다.
+  rpc Tokenize(TokenizeRequest) returns (TokenizeResponse) {}
 }
 
 // ################################################################ #
-//
-// Represents the input to API methods.
-message Document {
-
-  // 입력 전체의 내용
-  // 여러 문장이 입력되면 "\n"을 넣어준다.
-  string content = 2;
-
-  // 문서의 언어. 현재는 ko_KR 만 지원한다.
-  string language = 4;
-}
-
 // 입력 문서에 분석된 문장
 message Sentence {
   // The sentence text.
@@ -68,6 +45,64 @@ message Sentence {
   string refined = 3;
 }
 
+// WSD(동형이의어 의미 구분) 결과 하나. Morpheme.sense 로 실린다.
+//
+// # 왜 별도 메시지인가 (#1851)
+//
+// 예전엔 sense_str/sense_meaning/sense_urimal_no 를 Morpheme 에 평평하게 늘어놓았는데, 세 가지가
+// 곤란했다:
+//
+//   1. sense 는 **일부 형태소에만** 붙는다(조사·어미엔 원래 없고, with_sense=false 면 전부 없다).
+//      평평한 스칼라 필드는 proto3 기본이 암묵적 존재라 값이 없어도 빈 문자열로 응답에 실려,
+//      WSD 를 쓰지 않는 호출에까지 의미 없는 필드가 형태소마다 붙었다.
+//   2. "sense 가 있다/없다"를 클라이언트가 판정하려면 어느 필드를 봐야 하는지 애매했다
+//      (sense_str 은 있는데 뜻풀이가 없는 조합이 실제로 존재한다).
+//   3. 필드가 늘 때마다 Morpheme 이 넓어졌다.
+//
+// 메시지로 묶으면 셋 다 풀린다 — 메시지 필드는 proto3 에서도 명시적 존재라 미부여면 **필드 자체가
+// 없고**, `sense` 유무 하나로 판정이 끝나며, 확장은 이 메시지 안에서 한다.
+message Sense {
+  // 어깨번호. 같은 표제어의 동형이의어를 가르는 우리말샘 의미 번호다 (예: 1, 2, 7).
+  //
+  // 말뭉치·sense 어휘의 표기는 3자리 0채움 문자열("001")이지만 여기서는 **수치**로 준다 —
+  // 클라이언트가 비교·정렬할 때 문자열이면 매번 파싱해야 하기 때문이다. 원래 표기가 필요하면
+  // 3자리 0채움으로 되돌리면 된다(예: 1 → "001").
+  //
+  // 우리말샘 3자리 체계다(#1834 라벨 공간 전환). 세종 2자리 표기가 섞여 들어오면 학습 sense
+  // 어휘에 구 라벨 공간이 남은 것이므로 결함으로 취급한다.
+  //
+  // 표제어와 품사는 이 메시지에 넣지 않는다 — 표제어는 Token.lemma, 품사는 Morpheme.tag 로
+  // 이미 나가므로 중복이다.
+  uint32 sense_no = 1;
+
+  // 한국어 뜻풀이 (예: "사람이나 짐 따위를 싣고 물 위로 떠다니도록 ... 만든 물건.").
+  //
+  // 빈 값일 수 있다 — 우리말샘 조인 매칭률이 100% 가 아니다(실측 99.4%). sense 가 붙었다고 해서
+  // 뜻풀이가 있다고 가정하지 말 것.
+  string meaning = 2;
+
+  // 우리말샘 표제어 고유 번호(target_code). 서비스 개편 이후에도 불변이다. 예: 167957.
+  // URL 재조립: http://opendict.korean.go.kr/dictionary/view?sense_no={urimal_target_id}
+  //
+  // 원본 사전(dict.fbs 의 OpenDictWord.id)이 int32 라 여기서도 수치로 맞춘다.
+  // meaning 과 마찬가지로 0(미부여)일 수 있다.
+  int32 urimal_target_id = 3;
+
+  // 이 의미를 고른 확률 [0, 1].
+  //
+  // **후보 집합 안에서의 softmax** 다 — 전체 sense 클래스(약 58,000개)가 아니라, 그 (표제어, 품사)
+  // 의 후보 의미들만 놓고 정규화한 값이다. 서빙이 후보 집합 안에서 argmax 를 취하도록 학습·평가
+  // 됐으므로(전체 클래스 argmax 는 사실상 무작위), 실제 결정이 일어난 공간에서의 확률이라야 뜻이
+  // 있기 때문이다.
+  //
+  // 주의: 후보가 하나뿐인 표제어는 항상 1.0 이다. 이는 "확신"이 아니라 "고를 것이 하나뿐"이라는
+  // 뜻이므로, 신뢰도 임계값으로 쓸 때는 후보 수를 함께 고려해야 한다.
+  //
+  // ⚠️ **Morpheme.probability 와 이름은 같지만 성질이 다르다.** 그쪽은 클래스별 **독립 시그모이드**
+  // 값이라 한 위치의 값들을 더해도 1 이 아니다(실측 1.50~1.57). 이쪽만 후보 집합 softmax 라
+  // 합이 1 인 진짜 확률분포다. 두 값을 같은 임계값으로 비교하거나 한 축에 함께 그리지 말 것.
+  float probability = 6;
+}
 
 // 형태소
 message Morpheme {
@@ -75,25 +110,59 @@ message Morpheme {
   TextSpan text = 1;
   // 형태소 태그
   Tag tag = 2;
-  // 형태소 분석 결과 확률
+
+  // 이 태그에 대한 모델 점수 [0, 1]. 값이 클수록 그 품사일 가능성이 높다.
+  //
+  // ⚠️ **확률분포가 아니다.** tag-model 의 출력단은 softmax 가 아니라 **클래스별 독립 시그모이드**라
+  // (ONNX 그래프의 마지막 연산이 Sigmoid — 안쪽 Softmax 2개는 어텐션 가중치다), 한 위치의 49개
+  // 클래스 값을 더해도 1 이 되지 않는다(실측 1.50~1.57). 따라서
+  //   - 다른 후보 태그의 값과 더하거나 "나머지 확률" 을 계산하지 말 것.
+  //   - Sense.probability(후보 집합 softmax, 합=1)와 **척도가 다르므로** 같은 임계값으로 비교하거나
+  //     한 축에 함께 그리지 말 것.
+  //
+  // 이름이 probability 인 것은 초기 API 부터 굳은 것이라 유지한다(개명은 JSON 키를 바꿔 기존
+  // 클라이언트를 깨뜨린다). 성질을 정확히 부르자면 score 나 confidence 다.
   float probability = 3;
 
-  // 유의어 번호
-  // int32 disambiguation = 4;
+  // 필드 4: 옛 disambiguation. 쓰인 적이 없고 되살릴 계획도 없다. WSD 의미는 sense(7)가 담당한다.
+  reserved 4;
+  reserved "disambiguation";
 
   // 사전에 없는 단어 표시
   OutOfVocab out_of_vocab = 5;
 
   // 사전에 없는 단어 정보 처리 결과
   enum OutOfVocab {
-    IN_WORD_EMBEDDING = 0;  // 워드 임베딩에 포함된 내용
-    OUT_OF_VOCAB = 1;       // 자동 추측, 미등록 단어
-    IN_CUSTOM_DICT = 2;     // 사용자 제공 사전에 있는 내용
-    IN_BUILTIN_DICT = 3;    // 기본 사전에 포함된 내용
+    IN_WORD_EMBEDDING = 0; // 워드 임베딩에 포함된 내용
+    OUT_OF_VOCAB = 1; // 자동 추측, 미등록 단어
+    IN_CUSTOM_DICT = 2; // 사용자 제공 사전에 있는 내용
+    IN_BUILTIN_DICT = 3; // 기본 사전에 포함된 내용
+    IN_URIMALSAEM = 4; // 우리말샘에 포함된 내용
+    IN_WIKI_DICT = 5; // 위키 백과 사전에 포함된 내용
+    IN_ON_DICT = 6; // 온 용어 사전에 포함된 내용
   }
 
-  // 내부적으로 pred 된 형태소는 0~42까지 반환하지만,
-  // 1~43까지 숫자로 쓰고, UNK은 0으로 바꾼다.
+  // 사용된 사용자 사전의 이름
+  optional string custom_dict_name = 6;
+
+  // WSD(동형이의어 의미 구분) 결과. tag-sense-model.onnx + sense-vocab.fb 가 로드되고
+  // 요청이 with_sense=true 이며, 이 형태소에 의미가 부여된 경우에만 실린다.
+  //
+  // **필드 없음 = 미부여.** 조사·어미처럼 의미를 갖지 않는 형태소에는 원래 붙지 않는다.
+  //
+  // # 왜 optional 인가 (메시지 필드인데도)
+  //
+  // 일반적인 proto3 라면 메시지 필드는 이미 명시적 존재라 optional 이 무의미하다. 그런데 이 서버의
+  // JSON 코덱은 **EmitUnpopulated: true** 로 설정돼 있어(jsoncodec.go — 클라이언트가 0값 필드를
+  // 기대하도록 오래 굳은 계약이다), 미설정 메시지 필드를 `"sense": null` 로 내보낸다.
+  //
+  // protojson 은 EmitUnpopulated 여도 **합성 oneof 는 생략**하는데, proto3 의 optional 이 바로 그
+  // 합성 oneof 다. 그래서 여기서는 optional 이 "키를 아예 빼는" 유일한 수단이다(실측 확인:
+  // jsoncodec_test.go 의 TestSenseOmittedWhenUnset). 같은 이유로 custom_dict_name 도 optional 이다.
+  optional Sense sense = 7;
+
+  // 내부적으로 pred 된 형태소는 0~46까지 반환하지만,
+  // 1~47까지 숫자로 쓰고, UNK은 0으로 바꾼다.
   enum Tag {
     //// 0 1 EC
     //// 1 2 EF
@@ -193,32 +262,6 @@ message Morpheme {
   }
 }
 
-// Represents the text encoding that the caller uses to process the output.
-// Providing an `EncodingType` is recommended because the API provides the
-// beginning offsets for various outputs, such as tokens and mentions, and
-// languages that natively use different text encodings may access offsets
-// differently.
-enum EncodingType {
-  // If `EncodingType` is not specified, encoding-dependent information (such as
-  // `begin_offset`) will be set at `-1`.
-  NONE = 0;
-
-  // Encoding-dependent information (such as `begin_offset`) is calculated based
-  // on the UTF-8 encoding of the input. C++ and Go are examples of languages
-  // that use this encoding natively.
-  UTF8 = 1;
-
-  // Encoding-dependent information (such as `begin_offset`) is calculated based
-  // on the UTF-16 encoding of the input. Java and JavaScript are examples of
-  // languages that use this encoding natively.
-  UTF16 = 2;
-
-  // Encoding-dependent information (such as `begin_offset`) is calculated based
-  // on the UTF-32 encoding of the input. Python is an example of a language
-  // that uses this encoding natively.
-  UTF32 = 3;
-}
-
 // 어절
 message Token {
   // The token text.
@@ -235,20 +278,6 @@ message Token {
   string modified = 11;
 }
 
-// 텍스트 조각
-message TextSpan {
-  // 텍스트 조각의 내용
-  string content = 1;
-
-  // 텍스트 조각의 위치
-  // EncodingType에 따라서 위치의 값이 달라진다.
-  int32 begin_offset = 2;
-
-  // 길이
-  int32 length = 3;
-}
-
-
 // 형태소 분석 요청 메시지
 message AnalyzeSyntaxRequest {
   // 입력 문서
@@ -258,30 +287,67 @@ message AnalyzeSyntaxRequest {
   EncodingType encoding_type = 2;
 
   // auto split sentence true이면 자동으로 문장 분리를 시도한다.
-  // 없으면 \n 을 기준으로 문장을 자른다.
+  // 없으면 NEWLINE을 기준으로 문장을 자른다.
   // 기본값은 false 이다.
   bool auto_split_sentence = 3;
 
   // 커스텀 사전 도메인 정보
-  // 고유명사, 복합명사 사전에 기반하여 처리함.
-  string custom_domain = 4;
+  // v4.0에서는 폐기될 예정입니다. 새로운 custom_dict_names를 사용해주세요.
+  // 새로운 custom_dict_names에 값이 들어있는 경우, 이 값은 무시됩니다.
+  string custom_domain = 4 [deprecated = true];
 
   // 자동 띄어쓰기
   bool auto_spacing = 5;
 
-  // 자동 붙여쓰기 
+  // 자동 붙여쓰기
   bool auto_jointing = 6;
+
+  // WSD(동형이의어 의미 구분) 결과 포함 여부. 기본값 false.
+  // true 이고 서버에 tag-sense-model.onnx 가 로드된 경우에만, 응답 Morpheme 에
+  // sense(Sense 메시지, 필드 10)가 실린다(추가 추론 1회 비용).
+  // false 면 기존 tag-model 단일 추론 경로 그대로다(비용·결과 불변) — 이때 sense 는 아예 없다.
+  bool with_sense = 7;
+
+  // 커스텀 사전 이름들
+  // CustomDictionaryService를 사용해서 만든 사전을 여러 개 지정한다.
+  // 하나 이상의 지정할 경우, 먼저 나오는 사전이 우선되어 사용된다.
+  repeated string custom_dict_names = 11;
 }
 
-// 형태 분석 응담 메시지
+// 형태 분석 응답 메시지
 message AnalyzeSyntaxResponse {
   // 입력된 문장에 포함된 문장들
   repeated Sentence sentences = 1;
 
-  // 텍스트의 언어, 만일 언어가 지정되지 않은 경우에는 자돋으로 탐지하여 반환한다.
+  // 텍스트의 언어, 만일 언어가 지정되지 않은 경우에는 자동으로 탐지하여 반환한다.
   // 언어가 지정된 경우에는 동일한 언어를 반환한다.
   // 이때, 언어는 ko_KR 등과 같이 사용한다.
   string language = 3;
+  // 어절의 개수
+  int32 tokens_count = 100;
+}
+
+// 후처리 없는 순수 형태소 분석 요청 메시지.
+// seg_model + tag_model 추론만 수행하며 복합명사·복합동사 분해,
+// 자동 띄어쓰기·붙여쓰기를 일절 적용하지 않는다.
+// 사용자 사전도 적용하지 않는다(순수 모델 출력 보장).
+// 응답 형식은 AnalyzeSyntaxResponse와 동일하다.
+message AnalyzeSyntaxRawRequest {
+  // 입력 문서
+  Document document = 1;
+
+  // 오프셋을 계산하기 위한 인코딩 타입
+  EncodingType encoding_type = 2;
+
+  // auto split sentence true이면 자동으로 문장 분리를 시도한다.
+  // 없으면 NEWLINE을 기준으로 문장을 자른다.
+  // 기본값은 false 이다.
+  bool auto_split_sentence = 3;
+
+  // WSD(동형이의어 의미 구분) 결과 포함 여부. 기본값 false.
+  // raw 응답에도 후처리 없는 모델 sense 출력을 그대로 싣는다(WSD 개발·평가용).
+  // AnalyzeSyntaxRequest.with_sense 와 동일한 의미·비용 특성이다.
+  bool with_sense = 4;
 }
 
 // 형태소 분석 요청 메시지
@@ -295,29 +361,40 @@ message AnalyzeSyntaxListRequest {
   EncodingType encoding_type = 3;
 
   // 커스텀 사전 도메인 정보
-  // 고유명사, 복합명사 사전에 기반하여 처리함.
-  string custom_domain = 4;
+  // v4.0에서는 폐기될 예정입니다. 새로운 custom_dict_names를 사용해주세요.
+  // 새로운 custom_dict_names에 값이 들어있는 경우, 이 값은 무시됩니다.
+  string custom_domain = 4 [deprecated = true];
 
   // 자동 띄어쓰기
   bool auto_spacing = 5;
 
-  // 자동 붙여쓰기 
+  // 자동 붙여쓰기
   bool auto_jointing = 6;
+
+  // WSD(동형이의어 의미 구분) 결과 포함 여부. 기본값 false.
+  // AnalyzeSyntaxRequest.with_sense 와 동일한 의미·비용 특성이다.
+  bool with_sense = 7;
+
+  // 커스텀 사전 이름들
+  // CustomDictionaryService를 사용해서 만든 사전을 여러 개 지정한다.
+  // 하나 이상의 지정할 경우, 먼저 나오는 사전이 우선되어 사용된다.
+  repeated string custom_dict_names = 11;
 }
 
-// 형태 분석 응담 메시지
+// 형태 분석 응답 메시지
 message AnalyzeSyntaxListResponse {
   // 입력된 문장에 포함된 문장들
   // 여기서 문장은 요청에 대응하여 1:1로 맞춰진다.
   // 만일 요청이 빈 문장이면 빈 문장으로 대응한다.
   repeated Sentence sentences = 1;
 
-  // 텍스트의 언어, 만일 언어가 지정되지 않은 경우에는 자돋으로 탐지하여 반환한다.
+  // 텍스트의 언어, 만일 언어가 지정되지 않은 경우에는 자동으로 탐지하여 반환한다.
   // 언어가 지정된 경우에는 동일한 언어를 반환한다.
   // 이때, 언어는 ko_KR 등과 같이 사용한다.
   string language = 3;
+  // 어절의 개수
+  int32 tokens_count = 100;
 }
-
 
 // 토크나이즈 요청 메시지
 message TokenizeRequest {
@@ -327,10 +404,10 @@ message TokenizeRequest {
   // The encoding type used by the API to calculate offsets.
   EncodingType encoding_type = 2;
 
-  // auto split sentence true이면 자동으로 문장 분리를 시도한다.
-  // 없으면 \n 을 기준으로 문장을 자른다.
+  // auto split sentence 옵션은 사용하지 않는다.
+  // 기본적으로 '\n' 을 기준으로 문장을 자른다.
   // 기본값은 false 이다.
-  bool auto_split_sentence = 3;
+  bool auto_split_sentence = 3 [deprecated = true];
 
   // 자동 띄어쓰기
   bool auto_spacing = 5;
@@ -344,7 +421,6 @@ message Segment {
   // 각 위치에 대한 정보
   string hint = 2;
 }
-
 
 message SegmentToken {
   // The token text.
@@ -360,15 +436,16 @@ message SegmentSentence {
   TextSpan text = 1;
   // 어절 내부의 형태소 분리
   repeated SegmentToken tokens = 2;
-
 }
 
 // Tokenize 요청 토크나이즈에 대한 요청
 message TokenizeResponse {
-  
   // 분절 분리된 문장들의 배열
   repeated SegmentSentence sentences = 1;
 
   // ISO 문자 코드
   string language = 3;
+
+  // 어절의 개수
+  int32 tokens_count = 100;
 }

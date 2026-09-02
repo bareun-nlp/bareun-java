@@ -1,48 +1,32 @@
-// Copyright 2019-2023 BAIKAL AI Inc.
+// Copyright 2019-present BAIKAL AI Inc.
 //
 
 syntax = "proto3";
 
 package bareun;
 
-option go_package = "ai.bareun/proto/bareun";
+option go_package = "bareun.ai/lang/bareun/genproto/bareun;svc";
 option java_package = "ai.bareun.protos";
 option java_multiple_files = true;
 option java_outer_classname = "CustomDictionaryServiceProto";
 
 import "bareun/dict_common.proto";
 import "google/protobuf/empty.proto";
-import "google/api/annotations.proto";
 
 service CustomDictionaryService {
   // 전체 목록을 다 가져오기
-  rpc GetCustomDictionaryList (google.protobuf.Empty) returns (GetCustomDictionaryListResponse) {
-    option (google.api.http) = {
-      get: "/bareun/api/v1/customdict"
-      body: "*"
-    };
-  }
+  rpc GetCustomDictionaryList (google.protobuf.Empty) returns (GetCustomDictionaryListResponse) {}
   // 현재 저장되어 있는 사전 하나만 가져온다.
-  rpc GetCustomDictionary (GetCustomDictionaryRequest) returns (GetCustomDictionaryResponse) {
-    option (google.api.http) = {
-      get: "/bareun/api/v1/customdict/{domain_name}"
-      body: "*"
-    };
-  }
+  rpc GetCustomDictionary (GetCustomDictionaryRequest) returns (GetCustomDictionaryResponse) {}
+
   // 전체를 모두 다 바꿔치기하는 경우
-  rpc UpdateCustomDictionary (UpdateCustomDictionaryRequest) returns (UpdateCustomDictionaryResponse) {
-    option (google.api.http) = {
-      post: "/bareun/api/v1/customdict/{domain_name}"
-      body: "*"
-    };
-  }
+  rpc UpdateCustomDictionary (UpdateCustomDictionaryRequest) returns (UpdateCustomDictionaryResponse) {}
+
   // 여러 개를 한꺼번에 지운다.
-  rpc RemoveCustomDictionaries (RemoveCustomDictionariesRequest) returns (RemoveCustomDictionariesResponse) {
-    option (google.api.http) = {
-      post: "/bareun/api/v1/customdict/delete"
-      body: "*"
-    };
-  }
+  rpc RemoveCustomDictionaries (RemoveCustomDictionariesRequest) returns (RemoveCustomDictionariesResponse) {}
+
+  // 사용사 사전 사이의 충돌을 점검한다.
+  rpc CheckConflict (CheckConflictRequest) returns (CheckConflictResponse) {}
 }
 
 // 하나의 도메인용 커스텀 사전 데이터
@@ -89,6 +73,12 @@ message CustomDictionary {
   DictSet vv_set = 5;
   // 형용사 사전
   DictSet va_set = 6;
+  // 관형사 사전
+  DictSet mm_set = 7;
+  // 부사 사전
+  DictSet mag_set = 8;
+  // 감탄사 사전
+  DictSet ic_set = 9;
 }
 
 //
@@ -131,3 +121,43 @@ message RemoveCustomDictionariesResponse {
   map<string, bool> deleted_domain_names = 1;
 }
 
+
+// 사용자 사전의 충돌을 점검하기 위한 요청
+message CheckConflictRequest {
+  // 비교할 사전들의 목록
+  // 사전의 내부에서도 비교를 할 수 있기 때문에 하나로도 충분하다.
+  repeated string domain_names = 1;
+}
+
+// 사용자 사전의 충돌 점검 응답
+message CheckConflictResponse {
+  // 전체 충돌의 내욤
+  repeated Conflict conflicts = 1;
+}
+
+// 비교대상 사전 기본 정보
+message DictOne {
+  // 도메인 이름
+  string dict_name = 1;
+  // 사전의 이름 (np_set 등)
+  string dict_set_name = 2;
+}
+
+// 하나의 충돌에 대한 설정
+message Conflict {
+  // 비교의 왼쪽
+  DictOne  left  = 1;
+  // 비교의 오른쪽
+  DictOne  right = 2;
+  // 단어 왼쪽
+  string left_word = 3;
+  // 단어 오른쪽
+  string right_word = 4;
+  // 충돌인가?
+  bool conflict = 5;
+  // 중복인가?
+  bool duplicated = 6;
+
+  // 오류 메시지
+  string conflict_msg = 11;
+}
