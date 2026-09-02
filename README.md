@@ -8,7 +8,7 @@
 
 ```xml
 <dependency>
-  <groupId>ai.bareun</groupId>
+  <groupId>ai.bareun.tagger</groupId>
   <artifactId>bareun-client</artifactId>
   <version>2.0.0</version>
 </dependency>
