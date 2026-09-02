@@ -1,169 +1,139 @@
 package ai.bareun.tagger;
 
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
-import io.grpc.ManagedChannel;
+import ai.bareun.client.BareunClient;
+import ai.bareun.client.BareunException;
 
-public class Tagger {
-    protected LanguageServiceClient.Host host;
-    protected String domain;
-    protected String api_key;
-    protected LanguageServiceClient client;
-    protected Map<String, CustomDict> custom_dicts = new HashMap<String, CustomDict>();
+/**
+ * 형태소 분석을 짧게 쓰는 진입점.
+ *
+ * <pre>{@code
+ * BareunClient client = BareunClient.builder().apiKey("koba-...").build();
+ * Tagger tagger = new Tagger(client);
+ *
+ * Tagged t = tagger.tag("아버지가 방에 들어가신다.");
+ * t.pos();    // [아버지/NNG, 가/JKS, 방/NNG, 에/JKB, 들어가/VV, 시/EP, ㄴ다/EF, ./SF]
+ * t.nouns();  // [아버지, 방]
+ * }</pre>
+ *
+ * <p>세밀한 옵션이 필요하면 {@link BareunClient#language()} 로 내려가 요청 메시지를
+ * 직접 만든다.
+ *
+ * <p>스레드 안전하다. 상태를 갖지 않고 {@link BareunClient} 에 위임하기만 한다.
+ */
+public final class Tagger {
 
-    public Tagger(String api_key) {
-        this(LanguageServiceClient.DEF_ADDRESS, api_key);
-    }
+    private final BareunClient client;
+    private final List<String> customDictNames;
 
-    public Tagger(String host, String api_key) {
-        this(host, "", api_key);
-    }
-
-    public Tagger(String host, String domain, String api_key) {
-        this(new LanguageServiceClient.Host(host), domain, api_key);
-    }
-
-    public Tagger(String host, int port, String api_key) {
-        this(host, port, "", api_key);
-    }
-
-    public Tagger(String host, int port, String domain, String api_key) {
-        this(new LanguageServiceClient.Host(host, port), domain, api_key);
-    }
-
-    public Tagger(LanguageServiceClient.Host host, String domain, String api_key) {
-        this.host = host;
-        this.domain = domain;
-        this.api_key = api_key;
-        client = new LanguageServiceClient(host, api_key);
-    }
-
-    public Tagger(ManagedChannel channel, String api_key) {
-        this(channel, "", api_key);
-    }
-
-    public Tagger(ManagedChannel channel, String domain, String api_key) {
-        this.domain = domain;
-        this.api_key = api_key;
-        client = new LanguageServiceClient(channel, api_key);
+    /**
+     * @param client 쓸 클라이언트
+     */
+    public Tagger(BareunClient client) {
+        this(client, List.of());
     }
 
     /**
-     * @param domain
-     * @return Tagger
+     * @param client 쓸 클라이언트
+     * @param customDictNames 모든 분석에 함께 쓸 사용자 사전 이름들. 앞에 온 것이 우선한다.
      */
-    public Tagger set_domain(String domain) {
-        this.domain = domain;
-        return this;
+    public Tagger(BareunClient client, List<String> customDictNames) {
+        this.client = client;
+        this.customDictNames = List.copyOf(customDictNames);
     }
 
     /**
-     * @param domain
-     * @return CustomDict
-     * @throws NullPointerException
+     * 문장을 분석한다.
+     *
+     * @param text 분석할 문장. 여러 문장이면 줄바꿈으로 나눠도 되고, 이어 붙여도
+     *        서버가 문장을 나눈다.
+     * @return 분석 결과
+     * @throws BareunException 호출 실패
      */
-    public CustomDict custom_dict(String domain) throws NullPointerException {
-        if (custom_dicts.get(domain) != null)
-            return custom_dicts.get(domain);
-        CustomDict dict = new CustomDict(domain, host, this.api_key);
-        custom_dicts.put(domain, dict);
-        return dict;
+    public Tagged tag(String text) {
+        return tag(text, false);
     }
 
     /**
-     * @param phrase
-     * @return Tagged
+     * 문장을 분석한다.
+     *
+     * @param text 분석할 문장
+     * @param withSense 동형이의어 의미 구분(WSD) 결과를 함께 받을지.
+     *        켜면 추론이 한 번 더 돌아 느려진다.
+     * @return 분석 결과
+     * @throws BareunException 호출 실패
      */
-    public Tagged tag(String phrase) {
-        return tag(phrase, true);
+    public Tagged tag(String text, boolean withSense) {
+        return new Tagged(text,
+                client.language().analyzeSyntax(text, true, withSense, customDictNames));
     }
 
     /**
-     * @param phrase
-     * @param auto_split
-     * @return Tagged
+     * 문장 목록을 한 번에 분석한다. 문장 경계가 이미 정해져 있을 때 왕복을 줄인다.
+     *
+     * @param sentences 문장 목록
+     * @param withSense WSD 결과를 함께 받을지
+     * @return 분석 결과들. 입력 순서와 같다.
+     * @throws BareunException 호출 실패
      */
-    public Tagged tag(String phrase, Boolean auto_split) {
-        if (phrase == null || phrase.isEmpty())
-            return new Tagged();
-
-        return new Tagged(phrase, client.analyze_syntax(phrase, domain, auto_split));
+    public List<Tagged> tagAll(List<String> sentences, boolean withSense) {
+        var res = client.language().analyzeSyntaxList(sentences, withSense);
+        // 응답은 문장별 결과를 한 응답 안에 담아 준다. 입력과 짝지어 돌려주려고
+        // 문장 하나짜리 응답으로 다시 쪼갠다.
+        List<Tagged> out = new java.util.ArrayList<>(res.getSentencesCount());
+        for (int i = 0; i < res.getSentencesCount(); i++) {
+            var one = ai.bareun.protos.AnalyzeSyntaxResponse.newBuilder()
+                    .addSentences(res.getSentences(i))
+                    .setLanguage(res.getLanguage())
+                    .build();
+            String src = (i < sentences.size()) ? sentences.get(i) : "";
+            out.add(new Tagged(src, one));
+        }
+        return out;
     }
 
     /**
-     * @param phrase
-     * @return Tagged
+     * 형태소 표층형만 뽑는다.
+     *
+     * @param text 분석할 문장
+     * @return 형태소 목록
+     * @throws BareunException 호출 실패
      */
-    public Tagged tags(List<String> phrase) {
-        if (phrase == null || phrase.isEmpty())
-            return new Tagged();
-
-        String p = String.join("\n", phrase);
-
-        return tag(p);
+    public List<String> morphs(String text) {
+        return tag(text).morphs();
     }
 
     /**
-     * @param phrase
-     * @return List
+     * 형태소에 품사를 붙여 뽑는다.
+     *
+     * @param text 분석할 문장
+     * @return {@code 형태소/품사} 목록
+     * @throws BareunException 호출 실패
      */
-    public List<?> pos(String phrase) {
-        return pos(phrase, false);
+    public List<String> pos(String text) {
+        return tag(text).pos();
     }
 
     /**
-     * @param phrase
-     * @param join
-     * @return List
+     * 명사만 뽑는다.
+     *
+     * @param text 분석할 문장
+     * @return 명사 목록
+     * @throws BareunException 호출 실패
      */
-    public List<?> pos(String phrase, Boolean join) {
-        return pos(phrase, join, false);
+    public List<String> nouns(String text) {
+        return tag(text).nouns();
     }
 
     /**
-     * @param phrase
-     * @param join
-     * @param detail
-     * @return List
+     * 동사만 뽑는다.
+     *
+     * @param text 분석할 문장
+     * @return 동사 목록
+     * @throws BareunException 호출 실패
      */
-    public List<?> pos(String phrase, Boolean join, Boolean detail) {
-        return tag(phrase).pos(join, detail);
-    }
-
-    /**
-     * @param phrase
-     * @param flatten
-     * @param join
-     * @param detail
-     * @return List
-     */
-    public List<?> pos(String phrase, Boolean flatten, Boolean join, Boolean detail) {
-        return tag(phrase).pos(flatten, join, detail);
-    }
-
-    /**
-     * @param phrase
-     * @return List<String>
-     */
-    public List<String> morphs(String phrase) {
-        return tag(phrase).morphs();
-    }
-
-    /**
-     * @param phrase
-     * @return List<String>
-     */
-    public List<String> nouns(String phrase) {
-        return tag(phrase).nouns();
-    }
-
-    /**
-     * @param phrase
-     * @return List<String>
-     */
-    public List<String> verbs(String phrase) {
-        return tag(phrase).nouns();
+    public List<String> verbs(String text) {
+        return tag(text).verbs();
     }
 }

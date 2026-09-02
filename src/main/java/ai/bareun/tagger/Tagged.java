@@ -1,279 +1,180 @@
 package ai.bareun.tagger;
 
-import ai.bareun.protos.AnalyzeSyntaxResponse;
-import ai.bareun.protos.*;
-
-import java.io.PrintStream;
 import java.util.ArrayList;
 import java.util.List;
 
-public class Tagged {
-    AnalyzeSyntaxResponse r;
-    String phrase;
+import ai.bareun.client.BareunException;
+import ai.bareun.protos.AnalyzeSyntaxResponse;
+import ai.bareun.protos.Morpheme;
+import ai.bareun.protos.Sentence;
+import ai.bareun.protos.Token;
 
-    public Tagged() {
-        this(null, null);
-    }
+/**
+ * 형태소 분석 결과를 다루기 쉽게 감싼 객체.
+ *
+ * <p>원본 응답이 필요하면 {@link #response()} 로 꺼낸다. 이 클래스는 흔히 쓰는
+ * 형태(형태소 목록, 품사 붙인 목록, 명사·동사만)를 뽑는 일만 한다.
+ *
+ * <p>불변이다. 만들어진 뒤 내용이 바뀌지 않는다.
+ */
+public final class Tagged {
 
-    public Tagged(String phrase, AnalyzeSyntaxResponse res) {
-        this.phrase = phrase;
-        this.r = res;
-
-        if (r == null) {
-            r = AnalyzeSyntaxResponse.getDefaultInstance();
-            this.phrase = "";
-        }
-    }
-
-    /**
-     * @return AnalyzeSyntaxResponse
-     */
-    public AnalyzeSyntaxResponse msg() {
-        return r;
-    }
+    private final String text;
+    private final AnalyzeSyntaxResponse response;
 
     /**
-     * @return List<Sentence>
+     * @param text 분석에 넣은 원문
+     * @param response 서버 응답
      */
+    Tagged(String text, AnalyzeSyntaxResponse response) {
+        this.text = text;
+        this.response = response;
+    }
+
+    /** @return 분석에 넣은 원문 */
+    public String text() {
+        return text;
+    }
+
+    /** @return 서버 응답 원본 */
+    public AnalyzeSyntaxResponse response() {
+        return response;
+    }
+
+    /** @return 문장 목록 */
     public List<Sentence> sentences() {
-        return r.getSentencesList();
+        return response.getSentencesList();
     }
 
     /**
-     * @return String
-     */
-    public String as_json_str() {
-        return LanguageServiceClient.toJson(r);
-    }
-
-    /*
-     * public List<List<String[]>> as_json() {
-     * List<List<String[]>> ret = new ArrayList<>();
-     * for(Sentence s: r.getSentencesList())
-     * for( Token t : s.getTokensList() ) {
-     * List<String[]> token = new ArrayList<>();
-     * ret.add(token);
-     * for( Morpheme m : t.getMorphemesList()) {
-     * token.add( _pos_array(m, true) );
-     * }
-     * }
-     * return ret;
-     * }
-     */
-
-    public void print_as_json() {
-        print_as_json(System.out);
-    }
-
-    /**
-     * @param out
-     */
-    public void print_as_json(PrintStream out) {
-        out.println(as_json_str());
-    }
-
-    /**
-     * @param m
-     * @param detail
-     * @return String
-     */
-    static String _pos_str(Morpheme m, Boolean detail) {
-        String ret = String.format("%s/%s", m.getText().getContent(), m.getTag().name());
-
-        if (detail) {
-            String p = m.getProbability() > 0 ? String.format(":%5.3f", m.getProbability()) : "";
-            String oov = m.getOutOfVocab().getNumber() != 0 ? ("#" + m.getOutOfVocab().name()) : "";
-            ret += p + oov;
-        }
-        return ret;
-    }
-
-    /**
-     * @param m
-     * @param detail
-     * @return String[]
-     */
-    static String[] _pos_array(Morpheme m, Boolean detail) {
-        if (!detail)
-            return new String[] { m.getText().getContent(), m.getTag().name() };
-
-        return new String[] {
-                m.getText().getContent(),
-                m.getTag().name(),
-                m.getProbability() > 0 ? String.format("%5.3f", m.getProbability()) : "",
-                m.getOutOfVocab().getNumber() != 0 ? m.getOutOfVocab().name() : ""
-        };
-    }
-
-    /**
-     * @param join
-     * @param detail
-     * @return List
-     */
-    public List<List<?>> pos_structured(Boolean join, Boolean detail) {
-        List<List<?>> ret = new ArrayList<>();
-        for (Sentence s : r.getSentencesList())
-            for (Token t : s.getTokensList()) {
-                List<?> token = new ArrayList<>();
-                List<String[]> _t_arr = new ArrayList<String[]>();
-                List<String> _t_str = new ArrayList<String>();
-                if (join)
-                    token = _t_str;
-                else
-                    token = _t_arr;
-                ret.add(token);
-                for (Morpheme m : t.getMorphemesList()) {
-                    if (join)
-                        _t_str.add(_pos_str(m, detail));
-                    else
-                        _t_arr.add(_pos_array(m, detail));
-                    ;
-                }
-            }
-        return ret;
-    }
-
-    /**
-     * @return List<String>
-     */
-    public List<String> pos() {
-        return pos(false);
-    }
-
-    /**
-     * @param detail
-     * @return List<String>
-     */
-    public List<String> pos(Boolean detail) {
-        List<String> ret = new ArrayList<String>();
-        List<?> r = pos(true, detail);
-        for (Object o : r) {
-            ret.add(o.toString());
-        }
-        return ret;
-    }
-
-    /**
-     * @return List<Token>
-     */
-    public List<Token> tokens() {
-        List<Token> ret = new ArrayList<Token>();
-
-        for (Sentence s : r.getSentencesList()) {
-            for (Token t : s.getTokensList())
-                ret.add(t);
-        }
-        return ret;
-    }
-
-    /**
-     * @param t
-     * @param join
-     * @param detail
-     * @return
-     */
-    public List<?> pos(Token t, Boolean join, Boolean detail) {
-
-        if (join) {
-            List<String> ret = new ArrayList<String>();
-            for (Morpheme m : t.getMorphemesList())
-                ret.add(_pos_str(m, detail));
-            return ret;
-        } else {
-            List<String[]> ret = new ArrayList<String[]>();
-            for (Morpheme m : t.getMorphemesList())
-                ret.add(_pos_array(m, detail));
-            return ret;
-        }
-    }
-
-    /**
-     * @param join
-     * @param detail
-     * @return List
-     */
-    public List<?> pos(Boolean join, Boolean detail) {
-        if (join) {
-            List<String> ret = new ArrayList<String>();
-            for (Sentence s : r.getSentencesList())
-                for (Token t : s.getTokensList())
-                    for (Morpheme m : t.getMorphemesList())
-                        ret.add(_pos_str(m, detail));
-
-            return ret;
-        } else {
-            List<String[]> ret = new ArrayList<String[]>();
-            for (Sentence s : r.getSentencesList())
-                for (Token t : s.getTokensList())
-                    for (Morpheme m : t.getMorphemesList())
-                        ret.add(_pos_array(m, detail));
-            return ret;
-        }
-    }
-
-    /**
-     * @param flatten
-     * @param join
-     * @param detail
-     * @return List
-     */
-    public List<?> pos(Boolean flatten, Boolean join, Boolean detail) {
-        if (flatten)
-            return pos(join, detail);
-        else
-            return pos_structured(join, detail);
-    }
-
-    /**
-     * @return List<String>
+     * 형태소를 문장 구분 없이 늘어놓는다.
+     *
+     * @return 형태소 표층형 목록. 예: 아버지, 가, 방, 에, 들어가, 시, ㄴ다, .
      */
     public List<String> morphs() {
-        List<String> ret = new ArrayList<String>();
-        for (Sentence s : r.getSentencesList())
-            for (Token t : s.getTokensList())
-                for (Morpheme m : t.getMorphemesList())
-                    ret.add(m.getText().getContent());
-        return ret;
+        List<String> out = new ArrayList<>();
+        forEachMorpheme(m -> out.add(m.getText().getContent()));
+        return out;
     }
 
     /**
-     * @param arr
-     * @param val
-     * @return Integer
+     * 형태소에 품사를 붙여 늘어놓는다.
+     *
+     * @return {@code 형태소/품사} 목록. 예: 아버지/NNG, 가/JKS
      */
-    private static <T> Integer indexOf(T[] arr, T val) {
-        for (int i = 0; i < arr.length; i++) {
-            if (arr[i].equals(val))
-                return i;
-        }
-        return -1;
+    public List<String> pos() {
+        List<String> out = new ArrayList<>();
+        forEachMorpheme(m -> out.add(m.getText().getContent() + "/" + m.getTag().name()));
+        return out;
     }
 
     /**
-     * @return List<String>
+     * 명사만 뽑는다.
+     *
+     * <p>일반명사(NNG)·고유명사(NNP)·의존명사(NNB)·대명사(NP)·수사(NR)를 명사로 본다.
+     *
+     * @return 명사 목록
      */
     public List<String> nouns() {
-        Morpheme.Tag[] noun_tags = new Morpheme.Tag[] { Morpheme.Tag.NNP, Morpheme.Tag.NNG, Morpheme.Tag.NP,
-                Morpheme.Tag.NNB };
-        List<String> ret = new ArrayList<String>();
-        for (Sentence s : r.getSentencesList())
-            for (Token t : s.getTokensList())
-                for (Morpheme m : t.getMorphemesList())
-                    if (indexOf(noun_tags, m.getTag()) >= 0)
-                        ret.add(m.getText().getContent());
-        return ret;
+        return byTagPrefix("NN", "NP", "NR");
     }
 
     /**
-     * @return List<String>
+     * 동사만 뽑는다.
+     *
+     * <p>동사(VV)만 본다. 형용사(VA)나 보조용언(VX)은 포함하지 않는다.
+     *
+     * @return 동사 목록
      */
     public List<String> verbs() {
-        List<String> ret = new ArrayList<String>();
-        for (Sentence s : r.getSentencesList())
-            for (Token t : s.getTokensList())
-                for (Morpheme m : t.getMorphemesList())
-                    if (m.getTag() == Morpheme.Tag.VV)
-                        ret.add(m.getText().getContent());
-        return ret;
+        return byTagPrefix("VV");
+    }
+
+    /**
+     * 동형이의어 의미 구분(WSD) 결과를 뽑는다.
+     *
+     * <p>{@code withSense} 를 켜고 분석했고, 서버에 WSD 모델이 실려 있으며, 그 형태소에
+     * 의미가 부여된 경우에만 값이 있다. 조사·어미처럼 의미를 갖지 않는 형태소에는
+     * 원래 붙지 않으므로, 대부분의 형태소는 여기에 나오지 않는다.
+     *
+     * @return 의미가 부여된 형태소 목록
+     */
+    public List<SenseEntry> senses() {
+        List<SenseEntry> out = new ArrayList<>();
+        forEachMorpheme(m -> {
+            if (m.hasSense()) {
+                out.add(new SenseEntry(
+                        m.getText().getContent(),
+                        m.getTag().name(),
+                        m.getSense().getSenseNo(),
+                        m.getSense().getMeaning(),
+                        m.getSense().getProbability()));
+            }
+        });
+        return out;
+    }
+
+    /**
+     * 태그가 주어진 접두사 중 하나로 시작하는 형태소를 뽑는다.
+     *
+     * @param prefixes 태그 접두사들
+     * @return 해당하는 형태소 표층형 목록
+     */
+    private List<String> byTagPrefix(String... prefixes) {
+        List<String> out = new ArrayList<>();
+        forEachMorpheme(m -> {
+            String tag = m.getTag().name();
+            for (String p : prefixes) {
+                if (tag.startsWith(p)) {
+                    out.add(m.getText().getContent());
+                    return;
+                }
+            }
+        });
+        return out;
+    }
+
+    /**
+     * 모든 문장의 모든 어절의 모든 형태소를 순서대로 훑는다.
+     *
+     * <p>응답이 문장 → 어절 → 형태소의 3중 구조라, 뽑아 쓰는 메서드마다 같은 3중
+     * 반복을 쓰는 것을 피하려고 한 곳에 모았다.
+     *
+     * @param fn 형태소마다 부를 함수
+     */
+    private void forEachMorpheme(java.util.function.Consumer<Morpheme> fn) {
+        for (Sentence s : response.getSentencesList()) {
+            for (Token t : s.getTokensList()) {
+                for (Morpheme m : t.getMorphemesList()) {
+                    fn.accept(m);
+                }
+            }
+        }
+    }
+
+    /**
+     * 의미가 부여된 형태소 하나.
+     *
+     * @param morph 형태소 표층형
+     * @param tag 품사
+     * @param senseNo 우리말샘 어깨번호
+     * @param meaning 뜻풀이
+     * @param probability 모델 점수. 후보 집합 안에서의 확률이라 합이 1 이다
+     *        ({@link Morpheme#getProbability()} 와 척도가 다르니 같이 비교하지 말 것).
+     */
+    public record SenseEntry(String morph, String tag, int senseNo, String meaning,
+            float probability) {
+    }
+
+    /**
+     * 결과가 비어 있는지 본다.
+     *
+     * <p>서버가 성공을 돌려줬는데 문장이 하나도 없는 경우가 있다(빈 입력 등).
+     * 그때 {@link BareunException} 이 나지는 않으므로 호출한 쪽에서 확인해야 한다.
+     *
+     * @return 분석된 문장이 하나도 없으면 true
+     */
+    public boolean isEmpty() {
+        return response.getSentencesCount() == 0;
     }
 }
