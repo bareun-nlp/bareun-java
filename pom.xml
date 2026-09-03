@@ -4,7 +4,22 @@
   xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
   <modelVersion>4.0.0</modelVersion>
 
-  <groupId>ai.bareun</groupId>
+  <!--
+    groupId 는 옛 배포와 같은 ai.bareun.tagger 다.
+
+    상위 네임스페이스 ai.bareun 은 Maven Central Portal 에서 신청이 거부된다
+    ("Namespace 'ai.bareun' cannot be used"). 하위 ai.bareun.tagger 가 이미
+    등록돼 있어 충돌하기 때문이다. 그 네임스페이스는 2023 년에 검증을 마쳤고
+    ai.bareun.tagger:bareun:1.4.3 이 그것으로 배포됐다.
+
+    artifactId 는 bareun-client 로 둔다. 옛 bareun(1.4.3, gRPC 기반)과 좌표가
+    갈려야 사용자가 섞어 쓰지 않는다.
+
+    ai.bareun 은 Sonatype 지원에 문의 중이다. 열리면 그때 옮긴다 —
+    자바 패키지 이름(ai.bareun.client 등)은 groupId 와 무관하므로 코드는
+    그대로 두면 된다.
+  -->
+  <groupId>ai.bareun.tagger</groupId>
   <artifactId>bareun-client</artifactId>
   <version>2.0.0</version>
   <packaging>jar</packaging>
