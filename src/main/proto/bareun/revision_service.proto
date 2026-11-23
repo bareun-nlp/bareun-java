@@ -23,6 +23,25 @@ service RevisionService {
   // 
   rpc StreamCorrectError(StreamCorrectErrorRequest) returns (stream StreamCorrectErrorResponse) {}
 
+  // 세션을 연다 (#1387).
+  // 책 한 권처럼 하나의 글을 여러 번에 나눠 교정할 때, 앞 호출에서 본 미등록 단어를
+  // 뒤 호출에서 알려진 말로 쓰기 위한 상태를 서버에 만든다.
+  // 사용자 사전과 교정기 설정은 이 호출에서 정해지고 세션이 닫힐 때까지 바뀌지 않는다.
+  // 세션은 이 호출에 쓴 API 키로만 쓸 수 있고, 서버에 영구 저장되지 않는다.
+  // 키당·서버당 동시 세션 수에 상한이 있으며, 넘으면 RESOURCE_EXHAUSTED 로 거절한다.
+  rpc OpenSession(OpenSessionRequest) returns (OpenSessionResponse) {}
+
+  // 세션을 닫고 세션이 물고 있는 상태를 정리한다 (#1387).
+  // 마지막 호출 뒤 10분이 지나거나 열린 지 1시간이 지나면 서버가 알아서 닫으므로
+  // 호출하지 않아도 되지만, 닫으면 세션 수 상한을 바로 돌려받는다.
+  rpc CloseSession(CloseSessionRequest) returns (CloseSessionResponse) {}
+
+  // 세션의 변경 사건을 가져온다 (#1387).
+  // 단건 CorrectError 로 앞 호출의 답을 받은 클라이언트가, 뒤 호출 때문에 세션이 바뀌었는지
+  // (session_revision 이 올랐는지) 알아보고 그 사건 목록을 받아 가는 길이다.
+  // 스트림 호출은 같은 정보를 정정 이벤트로 받는다.
+  rpc GetSessionEvents(GetSessionEventsRequest) returns (GetSessionEventsResponse) {}
+
   // TODO
   // 맞춤법 교정을 큰 문서단위로 진행한다.
 }
@@ -60,8 +79,31 @@ message RevisionConfig {
   // 오타 교정 비활성화 (기본값 false, true로 설정시 오탈자 교정 안함)
   bool disable_typo_correction = 12;
 
-  // 문장 단위 점검 활성화
+  // 문장 단위 점검 활성화 (#2149 문장 단위·공공언어 교정).
+  // 어절 밖을 보는 교정(주어-서술어·목적어-서술어 호응, 대등 접속, 성분 생략, 번역투 피동)을 켠다.
+  // 기본값 false. 켜지 않아도 규범 오류(사물 높임·주체 높임 누락 등)는 늘 고친다.
   bool enable_sentence_check = 21;
+
+  // 공공 용어 순화 제안 활성화 (#2149). 어려운 한자어·외래어·일본어 투·로마자 약어(금일, 상기, 리스크,
+  // 망년회, GDP)에 쉬운 말을 **확인 블록**으로 제안한다. 본문은 바꾸지 않는다. 기본값 false.
+  // 결정 136 B 의 순화어 6낱말(고수부지·구좌·거래선·무데뽀·나시·만땅)은 이 옵션과 무관하게 늘 낸다.
+  bool enable_public_term_refine = 22;
+
+  // 논란 여지가 있는 고침 활성화 (#2149). 규범이 아니라 지침·권장에 기댄 고침이거나 정상 글에도 흔한
+  // 모양(되세요, 에 있어서, 미리 예습, 복수 '-들' 남용 등)이라 기본으로는 내지 않는 것을 켠다. 기본값 false.
+  bool enable_contested_fix = 23;
+
+  // 혐오·차별 표현 확인 블록 비활성화 (#2149). 낮잡는 말(우리말샘 '낮잡아 이르는 말' 1,410건)과 공공언어
+  // 지침의 차별 어휘(장애를 앓다, 몰카 등)에 중립 표현을 제안하는 확인 블록을 끈다. 끄는 꼴인 까닭은
+  // 지금까지 늘 켜져 있던 블록이라 기본값(false = 켬)을 지키기 위해서다. 본문은 어느 쪽이든 바뀌지 않는다.
+  // 7 번은 되돌린 옵션(보조 용언 삼값 정책)이 쓴 번호라 비워 둔다.
+  bool disable_bias_check = 24;
+
+  // 작은따옴표 인용 안 교정 비활성화 (#2221 /qa 인용 표기 오교정, 사용자 결정 note_369698).
+  // 켜면 짝이 맞는 작은따옴표(‘ ’ 또는 ') 안의 글자를 어느 규칙도 바꾸지 않는다. 논문처럼 인용 표기를
+  // 그대로 지켜야 하는 글을 위한 칸이다. 큰따옴표 안은 이 옵션과 무관하게 지금처럼 고친다.
+  // 기본값 false(인용 안도 고침). 끄는 꼴인 까닭은 지금까지 늘 고치던 기본 동작을 지키기 위해서다.
+  bool disable_single_quote_correction = 25;
 }
 
 // 맞춤법 교정 요청 메시지
@@ -85,6 +127,17 @@ message CorrectErrorRequest {
 
   // 맞춤법 교정기 적용시 옵션을 지정한다.
   RevisionConfig config = 11;
+
+  // 세션 ID (#1387). OpenSession 이 돌려준 값이다. 비워 두면 세션 없이 지금까지처럼 동작한다.
+  // 값이 있으면 이 요청의 custom_domain, custom_dict_names, config 는 **채워져 있어도 무시**하고
+  // 세션을 열 때 정한 값을 쓴다. 세션을 연 API 키가 아니면 거부한다(PERMISSION_DENIED).
+  //
+  // 세션 오류는 ErrorInfo 세부(domain "bareun.ai/session")의 reason 으로 가른다. 메시지 머리에도 같은 이유를 적는다.
+  //   - NOT_FOUND + SESSION_NOT_FOUND: 서버가 모르는 세션(닫음, 저장소 재시작 등). OpenSession 을 다시 부르고 필요한 앞부분을 다시 보낸다.
+  //   - NOT_FOUND + SESSION_EXPIRED: 수명(유휴 10분, 최대 1시간)이 다한 세션. 할 일은 SESSION_NOT_FOUND 와 같다.
+  //   - UNAVAILABLE + SESSION_STORE_UNAVAILABLE: 서버가 세션 저장소에 닿지 못해 세션이 있는지 알 수 없다. 세션을 다시 열지
+  //     말고 잠시 뒤 다시 하거나, 세션 없이(session_id 를 비우고 OpenSession 에 준 설정을 실어) 보낸다. 세션 없는 교정은 이 장애와 무관하다.
+  optional string session_id = 12;
 }
 
 // 한국어 문장 교정의 카테고리
@@ -274,6 +327,17 @@ message CorrectErrorResponse {
   string language = 99;
   // 어절의 개수
   int32 tokens_count = 100;
+
+  // 이 응답을 만든 시점의 세션 개정 번호 (#1387). 세션 호출에만 채워진다.
+  // 세션이 새 단어를 확정하는 등 교정 결과에 영향을 줄 상태가 바뀔 때마다 오른다.
+  // 클라이언트는 이 번호로 자기가 가진 답이 어느 상태 기준인지 안다.
+  // optional 인 까닭: 세션 없는 호출의 응답(JSON 포함)이 이 필드 때문에 달라지면 안 된다.
+  optional int64 session_revision = 13;
+
+  // 요청 글이 길어 앞부분만 처리했을 때만 채운다(#2265(9,000자 넘는 요청은 앞 5,000자만 처리)).
+  // origin·revised 는 처리한 앞부분이다. 처리하지 않은 뒷부분은 클라이언트가 원문에서
+  // Truncation.dropped_begin_offset 부터 이어 붙인다.
+  optional Truncation truncation = 14;
 }
 
 // 맞춤법 교정 요청 메시지
@@ -297,6 +361,17 @@ message StreamCorrectErrorRequest {
 
   // 맞춤법 교정기 적용시 옵션을 지정한다.
   RevisionConfig config = 11;
+
+  // 세션 ID (#1387). OpenSession 이 돌려준 값이다. 비워 두면 세션 없이 지금까지처럼 동작한다.
+  // 값이 있으면 이 요청의 custom_domain, custom_dict_names, config 는 **채워져 있어도 무시**하고
+  // 세션을 열 때 정한 값을 쓴다. 세션을 연 API 키가 아니면 거부한다(PERMISSION_DENIED).
+  //
+  // 세션 오류는 ErrorInfo 세부(domain "bareun.ai/session")의 reason 으로 가른다. 메시지 머리에도 같은 이유를 적는다.
+  //   - NOT_FOUND + SESSION_NOT_FOUND: 서버가 모르는 세션(닫음, 저장소 재시작 등). OpenSession 을 다시 부르고 필요한 앞부분을 다시 보낸다.
+  //   - NOT_FOUND + SESSION_EXPIRED: 수명(유휴 10분, 최대 1시간)이 다한 세션. 할 일은 SESSION_NOT_FOUND 와 같다.
+  //   - UNAVAILABLE + SESSION_STORE_UNAVAILABLE: 서버가 세션 저장소에 닿지 못해 세션이 있는지 알 수 없다. 세션을 다시 열지
+  //     말고 잠시 뒤 다시 하거나, 세션 없이(session_id 를 비우고 OpenSession 에 준 설정을 실어) 보낸다. 세션 없는 교정은 이 장애와 무관하다.
+  optional string session_id = 12;
 
   // 동시에 여러 요청이 발생할 수 있으므로 이 요청에 대해서 ID를 부여한다.
   // 요청 ID가 비어 있으면 서버에서 생성한다.
@@ -331,6 +406,17 @@ message StreamFirstCorrectError {
 
   // 어절의 개수
   int32 tokens_count = 100;
+
+  // 이 응답을 만든 시점의 세션 개정 번호 (#1387). 세션 호출에만 채워진다.
+  // 세션이 새 단어를 확정하는 등 교정 결과에 영향을 줄 상태가 바뀔 때마다 오른다.
+  // 클라이언트는 이 번호로 자기가 가진 답이 어느 상태 기준인지 안다.
+  // optional 인 까닭: 세션 없는 호출의 응답(JSON 포함)이 이 필드 때문에 달라지면 안 된다.
+  optional int64 session_revision = 13;
+
+  // 요청 글이 길어 앞부분만 처리했을 때만 채운다(#2265(9,000자 넘는 요청은 앞 5,000자만 처리)).
+  // origin·revised 는 처리한 앞부분이다. 처리하지 않은 뒷부분은 클라이언트가 원문에서
+  // Truncation.dropped_begin_offset 부터 이어 붙인다.
+  optional Truncation truncation = 14;
 
   // 요청의 ID
   // 추가적인 생각 중이 있는 경우에는 이 요청에 대한 ID를 생성한다.
@@ -387,5 +473,110 @@ message StreamCorrectErrorResponse {
 
     // 각 Thinking revision 단위로 생각 중 메시지를 전송
     ProgressRevision progress = 4;
+
+    // 세션이 새로 확정한 단어 때문에 앞서 보낸 교정을 되돌리라는 알림 (#1387).
+    // session_id 를 단 스트림에서만 온다.
+    SessionCorrection session_correction = 5;
   }
+}
+
+// 세션 정정 (#1387).
+// 세션은 미등록 단어가 두 번 이상 나와야 알려진 말로 확정한다. 확정은 호출이 끝날 때 일어나므로, 같은
+// 호출 안에서 먼저 나온 그 단어는 아직 몰랐을 때의 규칙(유사단어 등)이 이미 바꾸었을 수 있다.
+// 이 메시지는 첫 응답 뒤에 한 번 와서 그렇게 바뀐 블록을 되돌리게 한다.
+message SessionCorrection {
+  // 정정 대상 첫 응답의 req_id
+  int64 req_id = 1;
+
+  // 이 정정을 반영한 세션 개정 번호
+  int64 session_revision = 2;
+
+  // 정정을 일으킨 확정 사건들 (이 호출 시작 이후의 사건 전부)
+  repeated SessionEvent events = 3;
+
+  // 원문으로 되돌릴 블록들. 첫 응답 revised_blocks 중 해당 블록의 origin 구간이다.
+  // 클라이언트는 이 구간의 교정을 취소하고 원문을 그대로 둔다.
+  repeated TextSpan reverted = 4;
+}
+
+
+// =================================
+// SESSION (#1387)
+// =================================
+
+// 세션을 여는 요청.
+// 교정기가 쓸 사용자 사전과 설정을 여기서 한 번 정한다. 이후 session_id 를 단 교정 요청은
+// 자기 config·custom_dict_names 대신 이 값을 쓴다.
+message OpenSessionRequest {
+  // 커스텀 사전 이름들. CorrectErrorRequest.custom_dict_names 와 뜻이 같다.
+  // 먼저 나오는 사전이 우선된다.
+  repeated string custom_dict_names = 1;
+
+  // 맞춤법 교정기 옵션. CorrectErrorRequest.config 와 뜻이 같다.
+  RevisionConfig config = 2;
+}
+
+// 세션을 연 결과.
+message OpenSessionResponse {
+  // 세션 ID (UUID). 이후 교정·닫기·사건 조회 요청에 싣는다.
+  string session_id = 1;
+
+  // 열린 직후의 세션 개정 번호. 처음에는 0 이다.
+  int64 session_revision = 2;
+
+  // 마지막 호출 뒤 이 시간(초)이 지나면 세션이 닫힌다. 호출할 때마다 다시 센다.
+  int32 idle_timeout_seconds = 3;
+
+  // 열린 지 이 시간(초)이 지나면 호출이 이어지고 있어도 세션이 닫힌다.
+  int32 max_lifetime_seconds = 4;
+}
+
+// 세션을 닫는 요청.
+message CloseSessionRequest {
+  // 닫을 세션 ID
+  string session_id = 1;
+}
+
+// 세션을 닫은 결과.
+message CloseSessionResponse {
+  // 닫힌 시점의 세션 개정 번호
+  int64 session_revision = 1;
+}
+
+// 세션 사건의 종류.
+enum SessionEventKind {
+  // 정해지지 않음
+  SESSION_EVENT_KIND_UNKNOWN = 0;
+  // 세션이 미등록 단어를 새로 확정했다. 이 단어가 들어간 앞 호출의 답은 달라졌을 수 있다.
+  SESSION_EVENT_KIND_WORD_CONFIRMED = 1;
+}
+
+// 세션에서 일어난 사건 하나. 사건마다 개정 번호가 하나씩 오른다.
+message SessionEvent {
+  // 이 사건이 만든 세션 개정 번호
+  int64 revision = 1;
+
+  // 사건의 종류
+  SessionEventKind kind = 2;
+
+  // 사건과 관련된 단어. 확정된 단어는 처음 본 표기 그대로 싣는다(공백 변이는 한 단어다).
+  string word = 3;
+}
+
+// 세션 사건을 조회하는 요청.
+message GetSessionEventsRequest {
+  // 세션 ID
+  string session_id = 1;
+
+  // 이 번호보다 큰 개정 번호의 사건만 받는다. 0 이면 처음부터 받는다.
+  int64 since_revision = 2;
+}
+
+// 세션 사건 조회 결과.
+message GetSessionEventsResponse {
+  // 지금의 세션 개정 번호
+  int64 session_revision = 1;
+
+  // since_revision 보다 큰 사건들. 개정 번호 순이다.
+  repeated SessionEvent events = 2;
 }
