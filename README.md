@@ -171,6 +171,34 @@ b.notProcessed(i);                // i 번째 문장이 전혀 처리되지 않�
 나지 않고 앞부분 결과만 돌아오니, 긴 글을 다룬다면 잘림 정보를 확인하세요.
 서버 쪽 설명은 [공식 문서](https://docs.bareun.ai)를 보세요.
 
+## 긴 문서는 세션으로 나눠 보내기
+
+한 요청에 담을 수 없는 긴 글(책 한 권 등)은 문단·장 단위로 나눠 **같은 세션**으로 이어서 보냅니다.
+앞 호출에서 두 번 이상 나온 미등록 단어(고유명사 등)를 뒤 호출에서 알려진 말로 쓰므로,
+조각마다 따로 보낼 때보다 일관되게 교정됩니다. 위 잘림 때문에 조각은 9,000자를 넘기지 않게 나눕니다.
+
+```java
+Corrector corrector = new Corrector(client, List.of("mydict"));   // 사용자 사전은 세션 내내 쓰임
+
+StringBuilder out = new StringBuilder();
+try (CorrectionSession session = corrector.openSession()) {
+    for (String chunk : chunks) {
+        out.append(session.correct(chunk));
+    }
+}   // 닫으면 서버가 세션 상태를 바로 정리합니다
+```
+
+- 사용자 사전과 교정기 옵션은 세션을 열 때 정해지고 닫힐 때까지 바뀌지 않습니다.
+- 세션은 연 API 키로만 쓸 수 있습니다. 마지막 호출 뒤 10분, 열린 지 1시간이 지나면 서버가 닫습니다.
+  `session.idleTimeoutSeconds()`·`maxLifetimeSeconds()` 로 값을 볼 수 있습니다.
+- 키당·서버당 동시 세션 수에 상한이 있어 넘으면 `RESOURCE_EXHAUSTED` 입니다. 쓰고 나면 닫으세요.
+- 닫혔거나 수명이 다한 세션으로 부르면 `NOT_FOUND` 입니다. `CorrectionSession.isLost(e)` 로 알아보고
+  새 세션을 열어 이어갑니다.
+- `session.raw(chunk)` 는 서버 응답을 그대로, `session.events(0)` 은 세션이 새로 확정한 단어 목록을 줍니다.
+  낮은 수준으로는 `client.revision().openSession(...)`·`correctError(text, sessionId)`·`closeSession(id)` 를 씁니다.
+
+세션 교정은 단건 응답만 감쌉니다. 스트리밍 교정(`StreamCorrectError`)의 정정 이벤트는 아직 지원하지 않습니다.
+
 ## 오류 처리
 
 호출이 실패하면 `BareunException` 이 나오고, 종류는 `ConnectCode` 로 가릅니다.
