@@ -12,15 +12,18 @@ import ai.bareun.protos.SessionEvent;
 /**
  * 긴 문서를 여러 번에 나눠 교정하는 세션.
  *
- * <p>긴 글은 세션({@code OpenSession}, {@code CloseSession})을 열고 문단 단위로 나눠 보내세요.
- * 세션 안의 요청들은 따로 부르는 {@code CorrectError} 가 아니라 한 문서로 이어진 것으로 처리되어,
+ * <p>바른 엔진 자체에는 글자 수 제약이 없지만, 클라우드 서비스(api.bareun.ai)는 용량 때문에 요청
+ * 한 번에 처리하는 양을 5,000자로 둔다. 5,000자를 넘는 글은 앞부분만 처리하고 응답의
+ * {@code truncation} 필드에 알리므로, 긴 글은 세션({@code OpenSession}, {@code CloseSession})을
+ * 열고 문단 단위로 5,000자 이하씩 보낸다(세션 안의 요청은 한 문서로 이어져 처리되고, 5,000자
+ * 기준은 각 요청에 똑같이 걸린다). 이 기준은 운영 상황에 따라 바뀔 수 있으니 숫자를 코드에 박지
+ * 말고 {@code truncation} 의 {@code processed_chars}·{@code dropped_chars}
+ * ({@link TruncationInfo#processedChars()}·{@link TruncationInfo#droppedChars()})로 판단한다.
+ *
+ * <p>세션 안의 요청은 따로 부르는 {@code CorrectError} 가 아니라 한 문서로 이어진 것으로 처리되어,
  * 사용자 사전과 옵션이 문단마다 같게 적용되고 앞 문단에서 두 번 이상 나온 사전에 없는 낱말을 뒤
  * 문단에서 오타로 보지 않는다. 짧은 문단 요청은 서버가 한 번에 쓰는 메모리와 시간이 작아 긴 한
  * 요청보다 안정되게 처리되며, 이는 서버 처리 부담에 관한 설명이고 요금이 달라진다는 뜻은 아니다.
- * 5,000자 기준은 세션 안의 각 요청에도 똑같이 걸린다.
- *
- * <p>지금 기준은 5,000자이며 서비스 운영 상황에 따라 바뀔 수 있다. 숫자를 코드에 박지 말고
- * 응답의 잘림 정보로 판단한다.
  *
  * <pre>{@code
  * try (CorrectionSession s = new Corrector(client).openSession()) {
