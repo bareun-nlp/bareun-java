@@ -16,6 +16,8 @@ import ai.bareun.protos.SessionEvent;
  * 사용자 사전, 옵션이 뒤 문단에 이어진다. 그래서 긴 글은 세션을 열고 문단 단위로 보내는 것이
  * 권장 방식이다. 공개 서비스는 한 요청이 5,000자를 넘는 부분을 처리하지 않으니(세션 안의
  * 각 요청에도 같다) 조각은 그 안에서 나눈다.
+ * 지금 기준은 5,000자이며 서비스 운영 상황에 따라 바뀔 수 있다.
+ * 숫자를 코드에 박지 말고 응답의 잘림 정보로 판단한다.
  *
  * <pre>{@code
  * try (CorrectionSession s = new Corrector(client).openSession()) {
