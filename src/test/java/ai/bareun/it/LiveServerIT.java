@@ -154,4 +154,19 @@ class LiveServerIT {
         assertFalse(batch.notProcessed(0));
         assertEquals(0, batch.items().get(sentences.size() - 1).morphs().size());
     }
+
+    @Test
+    void 세션으로_나눠_교정하고_닫으면_옛_세션은_사라진다() {
+        String id;
+        try (var session = new Corrector(client).openSession()) {
+            id = session.id();
+            assertFalse(id.isBlank());
+            assertTrue(session.correct("이거 안되요.").contains("."));
+            assertTrue(session.correct("학교에 갔읍니다.").contains("갔습니다"));
+        }
+        // 닫은 세션으로 부르면 NOT_FOUND 라 isLost 로 알아본다.
+        var e = org.junit.jupiter.api.Assertions.assertThrows(ai.bareun.client.BareunException.class,
+                () -> client.revision().correctError("글", id));
+        assertTrue(ai.bareun.tagger.CorrectionSession.isLost(e), e.getMessage());
+    }
 }
