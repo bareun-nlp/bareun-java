@@ -108,7 +108,7 @@ public final class Corrector {
     /**
      * 교정된 문장과, 서버가 글이 길어 앞부분만 교정했는지를 함께 받는다.
      *
-     * <p>요청 글이 서버 기준(운영 서비스 5,000자)을 넘으면 앞 5,000자 안쪽만 교정한다.
+     * <p>요청 글이 서버 기준을 넘으면 앞부분만 교정한다.
      * 그때 {@link Result#revised()} 는 처리한 앞부분의 교정 결과이고, 처리하지 않은
      * 뒷부분은 원문의 {@link TruncationInfo#droppedBeginOffset()} 부터다. {@link #correct}
      * 는 앞부분만 돌려주므로 긴 글에는 이 메서드를 쓴다.
