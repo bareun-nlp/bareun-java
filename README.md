@@ -123,11 +123,11 @@ client.dictSearch().words("아지", DictSearchAnchor.DICT_SEARCH_ANCHOR_SUFFIX, 
 | `*` | 음절 0개 이상 |
 | `?` | 음절 정확히 1개 |
 
-## 긴 글 (9,000자 넘는 요청)
+## 긴 글 (5,000자 넘는 요청)
 
-공개 서비스(`api.bareun.ai`)는 한 요청의 글이 **9,000자를 넘으면 거절하지 않고 앞 5,000자
-안팎만 처리**합니다. 문장 끝, 없으면 공백에서 끊고(앞 500자 안에서 찾습니다), 그것도 없으면
-글자 중간에서 끊습니다. 9,000자까지는 전부 처리합니다. 자체 설치한 서버는 기본으로 자르지 않습니다.
+바른 엔진 자체에는 글자 수 제약이 없지만, 클라우드 서비스(api.bareun.ai)는 용량 때문에 요청 한 번에 처리하는 양을 5,000자로 둡니다. 5,000자를 넘는 글은 앞부분만 처리하고 응답의 `truncation` 필드에 알리므로, 긴 글은 5,000자 이하로 나눠 보내 주세요(맞춤법 교정은 아래 세션을 권장합니다). 이 기준은 운영 상황에 따라 바뀔 수 있으니 숫자를 코드에 박지 말고 `truncation` 의 `processed_chars`·`dropped_chars`(이 라이브러리에서는 `processedChars()`·`droppedChars()`)로 판단하세요.
+
+5,000자까지는 통째로 처리합니다. 넘으면 문장 끝, 없으면 공백, 그것도 없으면 글자 중간에서 끊으므로 처리 길이가 5,000자보다 조금 짧을 수 있습니다. 자체 설치한 서버는 기본으로 자르지 않습니다(설정 `requestCharLimit` 으로 바꿀 수 있음).
 
 버린 부분은 응답의 잘림 정보로 알려 줍니다. 잘리지 않은 응답에는 이 정보가 없습니다.
 결과의 위치(offset)는 잘렸어도 요청 글의 처음 기준 그대로입니다.
@@ -136,10 +136,10 @@ client.dictSearch().words("아지", DictSearchAnchor.DICT_SEARCH_ANCHOR_SUFFIX, 
 Tagged t = tagger.tag(longText);
 if (t.truncated()) {
     TruncationInfo info = t.truncation().orElseThrow();
-    info.originalChars();      // 9001   요청 글 전체의 글자 수
-    info.processedChars();     // 4991   처리한 글자 수(앞부분)
-    info.droppedChars();       // 4010   버린 글자 수
-    info.droppedBeginOffset(); // 4991   버린 구간이 시작하는 위치(String.substring 에 그대로)
+    info.originalChars();      // 6000   요청 글 전체의 글자 수
+    info.processedChars();     // 4993   처리한 글자 수(앞부분)
+    info.droppedChars();       // 1007   버린 글자 수
+    info.droppedBeginOffset(); // 4993   버린 구간이 시작하는 위치(String.substring 에 그대로)
     info.message();            // 안내 문구
     info.cutMidWord();         // true 면 글자 중간에서 잘라 마지막 어절을 믿기 어렵음
 
@@ -170,6 +170,36 @@ b.notProcessed(i);                // i 번째 문장이 전혀 처리되지 않�
 기존 메서드(`tag`, `tagAll`, `correct`, `changes`)는 그대로입니다. 긴 글을 보내도 예외가
 나지 않고 앞부분 결과만 돌아오니, 긴 글을 다룬다면 잘림 정보를 확인하세요.
 서버 쪽 설명은 [공식 문서](https://docs.bareun.ai)를 보세요.
+
+## 긴 문서는 세션으로 나눠 보내기
+
+바른 엔진 자체에는 글자 수 제약이 없지만, 클라우드 서비스(api.bareun.ai)는 용량 때문에 요청 한 번에 처리하는 양을 5,000자로 둡니다. 5,000자를 넘는 글은 앞부분만 처리하고 응답의 `truncation` 필드에 알리므로, 긴 글은 세션(`OpenSession`, `CloseSession`)을 열고 문단 단위로 5,000자 이하씩 보내 주세요(세션 안의 요청은 한 문서로 이어져 처리되고, 5,000자 기준은 각 요청에 똑같이 걸립니다). 이 기준은 운영 상황에 따라 바뀔 수 있으니 숫자를 코드에 박지 말고 `truncation` 의 `processed_chars`·`dropped_chars` 로 판단하세요.
+
+세션 안의 요청은 따로 부르는 `CorrectError` 가 아니라 한 문서로 이어진 것으로 처리되어, 사용자 사전과 옵션이 문단마다 같게 적용되고 앞 문단에서 두 번 이상 나온 사전에 없는 낱말을 뒤 문단에서 오타로 보지 않습니다. 짧은 문단 요청은 서버가 한 번에 쓰는 메모리와 시간이 작아 긴 한 요청보다 안정되게 처리되며, 이는 서버 처리 부담에 관한 설명이고 요금이 달라진다는 뜻은 아닙니다.
+
+조각을 보냈는데 `truncated()` 가 true 면 기준이 바뀐 것이니 `info.processedChars()` 를 보고 조각을 더 작게 나눕니다.
+
+```java
+Corrector corrector = new Corrector(client, List.of("mydict"));   // 사용자 사전은 세션 내내 쓰임
+
+StringBuilder out = new StringBuilder();
+try (CorrectionSession session = corrector.openSession()) {
+    for (String chunk : chunks) {
+        out.append(session.correct(chunk));
+    }
+}   // 닫으면 서버가 세션 상태를 바로 정리합니다
+```
+
+- 사용자 사전과 교정기 옵션은 세션을 열 때 정해지고 닫힐 때까지 바뀌지 않습니다.
+- 세션은 연 API 키로만 쓸 수 있습니다. 마지막 호출 뒤 10분, 열린 지 1시간이 지나면 서버가 닫습니다.
+  `session.idleTimeoutSeconds()`·`maxLifetimeSeconds()` 로 값을 볼 수 있습니다.
+- 키당·서버당 동시 세션 수에 상한이 있어 넘으면 `RESOURCE_EXHAUSTED` 입니다. 쓰고 나면 닫으세요.
+- 닫혔거나 수명이 다한 세션으로 부르면 `NOT_FOUND` 입니다. `CorrectionSession.isLost(e)` 로 알아보고
+  새 세션을 열어 이어갑니다.
+- `session.raw(chunk)` 는 서버 응답을 그대로, `session.events(0)` 은 세션이 새로 확정한 단어 목록을 줍니다.
+  낮은 수준으로는 `client.revision().openSession(...)`·`correctError(text, sessionId)`·`closeSession(id)` 를 씁니다.
+
+세션 교정은 단건 응답만 감쌉니다. 스트리밍 교정(`StreamCorrectError`)의 정정 이벤트는 아직 지원하지 않습니다.
 
 ## 오류 처리
 
@@ -229,7 +259,7 @@ mvn test                                   # 단위 테스트
 BAREUN_API_KEY=koba-... mvn test -Dtest=LiveServerIT   # 서버가 있어야 도는 통합 테스트
 ```
 
-글자 수 기준을 건 서버(운영 서비스처럼 9,000자)에서는 `BAREUN_TRUNCATION_LIMIT=9000` 을 함께 주면
+글자 수 기준을 건 서버(운영 서비스처럼 5,000자)에서는 `BAREUN_TRUNCATION_LIMIT=5000` 을 함께 주면
 긴 글 시험까지 돕니다.
 
 통합 테스트는 `BAREUN_API_KEY` 가 없으면 통째로 건너뜁니다.

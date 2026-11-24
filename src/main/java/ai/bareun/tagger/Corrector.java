@@ -95,9 +95,20 @@ public final class Corrector {
     }
 
     /**
+     * 긴 글을 여러 번에 나눠 교정하는 세션을 연다. 쓰고 나면 닫아야 하니 try-with-resources 로 쓴다.
+     * 이 {@link Corrector} 의 사용자 사전이 세션 내내 쓰인다.
+     *
+     * @return 열린 세션
+     * @throws BareunException 호출 실패. 동시 세션이 상한을 넘으면 {@link ConnectCode#RESOURCE_EXHAUSTED}.
+     */
+    public CorrectionSession openSession() {
+        return new CorrectionSession(client, client.revision().openSession(customDictNames, null));
+    }
+
+    /**
      * 교정된 문장과, 서버가 글이 길어 앞부분만 교정했는지를 함께 받는다.
      *
-     * <p>요청 글이 서버 기준(운영 서비스 9,000자)을 넘으면 앞 5,000자 안팎만 교정한다.
+     * <p>요청 글이 서버 기준을 넘으면 앞부분만 교정한다.
      * 그때 {@link Result#revised()} 는 처리한 앞부분의 교정 결과이고, 처리하지 않은
      * 뒷부분은 원문의 {@link TruncationInfo#droppedBeginOffset()} 부터다. {@link #correct}
      * 는 앞부분만 돌려주므로 긴 글에는 이 메서드를 쓴다.

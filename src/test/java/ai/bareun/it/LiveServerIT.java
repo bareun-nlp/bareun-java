@@ -102,8 +102,8 @@ class LiveServerIT {
     }
 
     /**
-     * 글자 수 기준: 서버가 {@code request_char_limit} 을 건 경우(운영 서비스 9,000자)만 의미가 있다.
-     * 그런 서버에 시험하려면 {@code BAREUN_TRUNCATION_LIMIT=9000} 을 준다. 자체 설치 서버는 자르지 않는다.
+     * 글자 수 기준: 서버가 {@code request_char_limit} 을 건 경우(운영 서비스 5,000자)만 의미가 있다.
+     * 그런 서버에 시험하려면 {@code BAREUN_TRUNCATION_LIMIT=5000} 을 준다. 자체 설치 서버는 자르지 않는다.
      */
     private static String longText(int chars) {
         String unit = "오늘은 날씨가 맑아서 공원에 산책을 다녀왔다. ";
@@ -143,7 +143,7 @@ class LiveServerIT {
     void 문장_목록은_요청과_일대일이고_빠진_문장은_비어_있다() {
         int limit = Integer.parseInt(System.getenv("BAREUN_TRUNCATION_LIMIT"));
         String sentence = longText(100);
-        List<String> sentences = java.util.Collections.nCopies(limit / 100 + 1, sentence);
+        List<String> sentences = java.util.Collections.nCopies(limit / 50, sentence);
 
         TaggedBatch batch = new Tagger(client).tagBatch(sentences, false);
 
@@ -153,5 +153,20 @@ class LiveServerIT {
         assertTrue(batch.notProcessed(sentences.size() - 1));
         assertFalse(batch.notProcessed(0));
         assertEquals(0, batch.items().get(sentences.size() - 1).morphs().size());
+    }
+
+    @Test
+    void 세션으로_나눠_교정하고_닫으면_옛_세션은_사라진다() {
+        String id;
+        try (var session = new Corrector(client).openSession()) {
+            id = session.id();
+            assertFalse(id.isBlank());
+            assertTrue(session.correct("이거 안되요.").contains("."));
+            assertTrue(session.correct("학교에 갔읍니다.").contains("갔습니다"));
+        }
+        // 닫은 세션으로 부르면 NOT_FOUND 라 isLost 로 알아본다.
+        var e = org.junit.jupiter.api.Assertions.assertThrows(ai.bareun.client.BareunException.class,
+                () -> client.revision().correctError("글", id));
+        assertTrue(ai.bareun.tagger.CorrectionSession.isLost(e), e.getMessage());
     }
 }

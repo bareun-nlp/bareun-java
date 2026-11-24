@@ -1,0 +1,149 @@
+package ai.bareun.tagger;
+
+import java.util.List;
+
+import ai.bareun.client.BareunClient;
+import ai.bareun.client.BareunException;
+import ai.bareun.client.ConnectCode;
+import ai.bareun.protos.CorrectErrorResponse;
+import ai.bareun.protos.OpenSessionResponse;
+import ai.bareun.protos.SessionEvent;
+
+/**
+ * 긴 문서를 여러 번에 나눠 교정하는 세션.
+ *
+ * <p>바른 엔진 자체에는 글자 수 제약이 없지만, 클라우드 서비스(api.bareun.ai)는 용량 때문에 요청
+ * 한 번에 처리하는 양을 5,000자로 둔다. 5,000자를 넘는 글은 앞부분만 처리하고 응답의
+ * {@code truncation} 필드에 알리므로, 긴 글은 세션({@code OpenSession}, {@code CloseSession})을
+ * 열고 문단 단위로 5,000자 이하씩 보낸다(세션 안의 요청은 한 문서로 이어져 처리되고, 5,000자
+ * 기준은 각 요청에 똑같이 걸린다). 이 기준은 운영 상황에 따라 바뀔 수 있으니 숫자를 코드에 박지
+ * 말고 {@code truncation} 의 {@code processed_chars}·{@code dropped_chars}
+ * ({@link TruncationInfo#processedChars()}·{@link TruncationInfo#droppedChars()})로 판단한다.
+ *
+ * <p>세션 안의 요청은 따로 부르는 {@code CorrectError} 가 아니라 한 문서로 이어진 것으로 처리되어,
+ * 사용자 사전과 옵션이 문단마다 같게 적용되고 앞 문단에서 두 번 이상 나온 사전에 없는 낱말을 뒤
+ * 문단에서 오타로 보지 않는다. 짧은 문단 요청은 서버가 한 번에 쓰는 메모리와 시간이 작아 긴 한
+ * 요청보다 안정되게 처리되며, 이는 서버 처리 부담에 관한 설명이고 요금이 달라진다는 뜻은 아니다.
+ *
+ * <pre>{@code
+ * try (CorrectionSession s = new Corrector(client).openSession()) {
+ *     for (String chunk : chunks) {          // 문단·장 단위로 나눈 조각
+ *         out.append(s.correct(chunk));
+ *     }
+ * }
+ * }</pre>
+ *
+ * <p>사용자 사전과 교정기 옵션은 세션을 열 때 정해지고 닫힐 때까지 바뀌지 않는다. 세션은 연
+ * API 키로만 쓸 수 있다. 마지막 호출 뒤 10분이 지나거나 열린 지 1시간이 지나면 서버가 닫는다.
+ * 닫힌 세션으로 부르면 {@link ConnectCode#NOT_FOUND} 가 나오니({@link #isLost}) 새로 열어 이어간다.
+ *
+ * <p>{@link #close()} 는 한 번만 서버를 부르고, 닫는 데 실패해도 예외를 던지지 않는다(서버가
+ * 어차피 수명이 다하면 닫는다). 스레드 안전성은 {@link BareunClient} 를 따른다.
+ */
+public final class CorrectionSession implements AutoCloseable {
+
+    private final BareunClient client;
+    private final String sessionId;
+    private final int idleTimeoutSeconds;
+    private final int maxLifetimeSeconds;
+    private volatile long revision;
+    private volatile boolean closed;
+
+    /**
+     * @param client 쓸 클라이언트
+     * @param opened 서버가 열어 준 세션
+     */
+    CorrectionSession(BareunClient client, OpenSessionResponse opened) {
+        this.client = client;
+        this.sessionId = opened.getSessionId();
+        this.revision = opened.getSessionRevision();
+        this.idleTimeoutSeconds = opened.getIdleTimeoutSeconds();
+        this.maxLifetimeSeconds = opened.getMaxLifetimeSeconds();
+    }
+
+    /** @return 세션 ID */
+    public String id() {
+        return sessionId;
+    }
+
+    /** @return 마지막으로 본 세션 개정 번호. 세션이 새 단어를 확정할 때마다 오른다. */
+    public long revision() {
+        return revision;
+    }
+
+    /** @return 마지막 호출 뒤 이 시간(초)이 지나면 서버가 세션을 닫는다. */
+    public int idleTimeoutSeconds() {
+        return idleTimeoutSeconds;
+    }
+
+    /** @return 열린 지 이 시간(초)이 지나면 서버가 세션을 닫는다. */
+    public int maxLifetimeSeconds() {
+        return maxLifetimeSeconds;
+    }
+
+    /**
+     * 이 세션으로 한 조각을 교정한다.
+     *
+     * @param text 교정할 조각. 서버 기준 길이(공개 서비스 5,000자)를 넘기지 않게 나눠 보낸다.
+     * @return 교정된 조각
+     * @throws BareunException 호출 실패. 세션이 사라졌으면 {@link #isLost}.
+     */
+    public String correct(String text) {
+        return raw(text).getRevised();
+    }
+
+    /**
+     * 이 세션으로 한 조각을 교정하고 서버 응답을 그대로 받는다.
+     *
+     * @param text 교정할 조각
+     * @return 서버 응답. {@code getSessionRevision()} 이 이 응답을 만든 시점의 세션 개정 번호다.
+     * @throws BareunException 호출 실패
+     */
+    public CorrectErrorResponse raw(String text) {
+        CorrectErrorResponse res = client.revision().correctError(text, sessionId);
+        if (res.hasSessionRevision()) {
+            revision = res.getSessionRevision();
+        }
+        return res;
+    }
+
+    /**
+     * 처음부터 지금까지 세션이 새로 확정한 단어 사건을 받는다.
+     *
+     * @param sinceRevision 이 개정 번호보다 뒤의 사건만. 전부 받으려면 0.
+     * @return 사건 목록
+     * @throws BareunException 호출 실패
+     */
+    public List<SessionEvent> events(long sinceRevision) {
+        var res = client.revision().getSessionEvents(sessionId, sinceRevision);
+        revision = res.getSessionRevision();
+        return res.getEventsList();
+    }
+
+    /**
+     * 세션을 닫는다. 이미 닫았으면 아무것도 하지 않는다. 닫기 호출이 실패해도 던지지 않는다.
+     */
+    @Override
+    public void close() {
+        if (closed) {
+            return;
+        }
+        closed = true;
+        try {
+            client.revision().closeSession(sessionId);
+        } catch (BareunException e) {
+            // 서버가 수명이 다한 세션을 알아서 정리한다. 닫기 실패로 호출한 쪽을 막지 않는다.
+        }
+    }
+
+    /**
+     * 예외가 "세션이 닫혔거나 수명이 다했다" 는 뜻인지 본다. 그러면 새 세션을 열고 필요한
+     * 앞부분을 다시 보내 이어간다.
+     *
+     * @param e 호출에서 나온 예외
+     * @return 서버가 모르는 세션이면 true
+     */
+    public static boolean isLost(BareunException e) {
+        return e.getCode() == ConnectCode.NOT_FOUND;
+    }
+}
