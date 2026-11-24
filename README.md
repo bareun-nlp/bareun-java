@@ -10,7 +10,7 @@
 <dependency>
   <groupId>ai.bareun.tagger</groupId>
   <artifactId>bareun-client</artifactId>
-  <version>2.0.0</version>
+  <version>2.1.0</version>
 </dependency>
 ```
 
@@ -123,6 +123,54 @@ client.dictSearch().words("아지", DictSearchAnchor.DICT_SEARCH_ANCHOR_SUFFIX, 
 | `*` | 음절 0개 이상 |
 | `?` | 음절 정확히 1개 |
 
+## 긴 글 (9,000자 넘는 요청)
+
+공개 서비스(`api.bareun.ai`)는 한 요청의 글이 **9,000자를 넘으면 거절하지 않고 앞 5,000자
+안팎만 처리**합니다. 문장 끝, 없으면 공백에서 끊고(앞 500자 안에서 찾습니다), 그것도 없으면
+글자 중간에서 끊습니다. 9,000자까지는 전부 처리합니다. 자체 설치한 서버는 기본으로 자르지 않습니다.
+
+버린 부분은 응답의 잘림 정보로 알려 줍니다. 잘리지 않은 응답에는 이 정보가 없습니다.
+결과의 위치(offset)는 잘렸어도 요청 글의 처음 기준 그대로입니다.
+
+```java
+Tagged t = tagger.tag(longText);
+if (t.truncated()) {
+    TruncationInfo info = t.truncation().orElseThrow();
+    info.originalChars();      // 9001   요청 글 전체의 글자 수
+    info.processedChars();     // 4991   처리한 글자 수(앞부분)
+    info.droppedChars();       // 4010   버린 글자 수
+    info.droppedBeginOffset(); // 4991   버린 구간이 시작하는 위치(String.substring 에 그대로)
+    info.message();            // 안내 문구
+    info.cutMidWord();         // true 면 글자 중간에서 잘라 마지막 어절을 믿기 어렵음
+
+    // 처리하지 않은 뒷부분은 원문에서 이어서 다시 보냅니다.
+    String rest = longText.substring(info.droppedBeginOffset());
+}
+```
+
+교정은 `correct()` 가 앞부분만 교정한 문자열을 돌려주므로, 긴 글에는 잘림 정보를 함께 주는
+`correctWithTruncation()` 을 씁니다.
+
+```java
+Corrector.Result r = corrector.correctWithTruncation(longText);
+r.revised();     // 교정된 앞부분
+r.truncation();  // Optional<TruncationInfo>
+```
+
+문장 목록(`tagBatch`)은 앞쪽 문장부터 처리합니다. 응답은 늘 요청과 1:1 이고, 처리하지 않은
+문장은 빈 결과로 자리만 둡니다.
+
+```java
+TaggedBatch b = tagger.tagBatch(sentences, false);
+b.truncated();                    // 앞쪽 문장만 처리했는지
+b.droppedBeginSentenceIndex();    // 처리하지 않은 부분이 시작하는 문장 번호(0부터)
+b.notProcessed(i);                // i 번째 문장이 전혀 처리되지 않았는지
+```
+
+기존 메서드(`tag`, `tagAll`, `correct`, `changes`)는 그대로입니다. 긴 글을 보내도 예외가
+나지 않고 앞부분 결과만 돌아오니, 긴 글을 다룬다면 잘림 정보를 확인하세요.
+서버 쪽 설명은 [공식 문서](https://docs.bareun.ai)를 보세요.
+
 ## 오류 처리
 
 호출이 실패하면 `BareunException` 이 나오고, 종류는 `ConnectCode` 로 가릅니다.
@@ -178,8 +226,11 @@ api-key: koba-...
 
 ```bash
 mvn test                                   # 단위 테스트
-BAREUN_API_KEY=koba-... mvn test           # 서버가 있어야 도는 통합 테스트까지
+BAREUN_API_KEY=koba-... mvn test -Dtest=LiveServerIT   # 서버가 있어야 도는 통합 테스트
 ```
+
+글자 수 기준을 건 서버(운영 서비스처럼 9,000자)에서는 `BAREUN_TRUNCATION_LIMIT=9000` 을 함께 주면
+긴 글 시험까지 돕니다.
 
 통합 테스트는 `BAREUN_API_KEY` 가 없으면 통째로 건너뜁니다.
 서버 주소는 `BAREUN_HOST`(기본 localhost)·`BAREUN_PORT`(기본 5656)로 줍니다.

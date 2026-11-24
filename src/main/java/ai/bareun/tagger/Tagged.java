@@ -2,6 +2,7 @@ package ai.bareun.tagger;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import ai.bareun.client.BareunException;
 import ai.bareun.protos.AnalyzeSyntaxResponse;
@@ -164,6 +165,27 @@ public final class Tagged {
      */
     public record SenseEntry(String morph, String tag, int senseNo, String meaning,
             float probability) {
+    }
+
+    /**
+     * 요청 글이 길어 앞부분만 처리됐는지 본다.
+     *
+     * <p>true 면 {@link #sentences()} 등 모든 결과가 처리한 앞부분의 것이다. 위치(offset)는
+     * 그래도 요청 글의 처음 기준이라 원문과 어긋나지 않는다.
+     *
+     * @return 앞부분만 처리했으면 true
+     */
+    public boolean truncated() {
+        return response.hasTruncation();
+    }
+
+    /**
+     * 잘림 정보를 돌려준다. 처리한 글자 수·버린 글자 수·안내 문구가 들어 있다.
+     *
+     * @return 잘렸으면 정보, 아니면 빈 값
+     */
+    public Optional<TruncationInfo> truncation() {
+        return TruncationInfo.of(response.hasTruncation(), response.getTruncation());
     }
 
     /**

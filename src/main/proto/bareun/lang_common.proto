@@ -22,6 +22,36 @@ message TextSpan {
   int32 length = 3;
 }
 
+// 요청 글이 서버 기준보다 길어 앞부분만 처리했음을 알리는 정보 (#2265(9,000자 넘는 요청은 앞 5,000자만 처리)).
+//
+// 잘리지 않은 응답에는 이 메시지를 싣는 필드 자체가 없다. 응답 필드는 모두 proto3 optional 이라
+// 이 정보를 모르는 옛 클라이언트도 그대로 동작한다(앞부분의 결과만 받을 뿐이다).
+//
+// 글자 수는 유니코드 코드 포인트(한글 완성형 한 글자·영문 한 자·공백·줄바꿈이 각각 한 글자)로 센다.
+// 기준 값(기본 9,000자 초과 시 앞 5,000자만 처리)은 운영자가 설정으로 바꾼다. 응답의 모든 begin_offset 은
+// 지금처럼 요청 글의 처음 기준이고, 앞부분을 그대로 자르므로 어긋나지 않는다.
+message Truncation {
+  // 요청 글 전체의 글자 수.
+  int32 original_chars = 1;
+
+  // 처리한 글자 수(앞부분). 응답의 origin·revised 와 sentences 가 이 범위다.
+  int32 processed_chars = 2;
+
+  // 처리하지 않고 버린 글자 수. original_chars - processed_chars 와 같다.
+  int32 dropped_chars = 3;
+
+  // 버린 구간이 시작하는 위치. 요청 encoding_type 기준이다(TextSpan.begin_offset 과 같은 잣대).
+  // 클라이언트는 원문의 이 위치부터 끝까지가 처리되지 않은 부분임을 알 수 있다.
+  // AnalyzeSyntaxList 는 글이 여러 문장이라, 이 값이 dropped_begin_sentence_index 번째 문장 안의 위치다.
+  int32 dropped_begin_offset = 4;
+
+  // 사람이 읽는 안내 문구(한국어, 괄호 안에 영어).
+  string message = 5;
+
+  // 문장 끝이나 공백을 찾지 못해 글자 중간에서 잘랐으면 참이다. 마지막 어절의 분석·교정을 믿기 어렵다.
+  bool cut_mid_word = 6;
+}
+
 //
 // Represents the input to API methods.
 message Document {

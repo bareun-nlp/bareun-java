@@ -78,6 +78,21 @@ public final class Tagger {
      * @throws BareunException 호출 실패
      */
     public List<Tagged> tagAll(List<String> sentences, boolean withSense) {
+        return tagBatch(sentences, withSense).items();
+    }
+
+    /**
+     * 문장 목록을 한 번에 분석하고, 서버가 글이 길어 앞쪽만 처리했는지도 함께 받는다.
+     *
+     * <p>문장 목록의 글자 수 합이 서버 기준(운영 서비스 9,000자)을 넘으면 앞쪽 문장부터
+     * 처리하고 나머지는 빈 결과로 둔다({@link TaggedBatch#notProcessed(int)}). 응답은 늘 요청과 1:1 이다.
+     *
+     * @param sentences 문장 목록
+     * @param withSense WSD 결과를 함께 받을지
+     * @return 문장별 결과와 잘림 정보
+     * @throws BareunException 호출 실패
+     */
+    public TaggedBatch tagBatch(List<String> sentences, boolean withSense) {
         var res = client.language().analyzeSyntaxList(sentences, withSense);
         // 응답은 문장별 결과를 한 응답 안에 담아 준다. 입력과 짝지어 돌려주려고
         // 문장 하나짜리 응답으로 다시 쪼갠다.
@@ -90,7 +105,9 @@ public final class Tagger {
             String src = (i < sentences.size()) ? sentences.get(i) : "";
             out.add(new Tagged(src, one));
         }
-        return out;
+        var info = TruncationInfo.of(res.hasTruncation(), res.getTruncation());
+        int idx = res.hasDroppedBeginSentenceIndex() ? res.getDroppedBeginSentenceIndex() : -1;
+        return new TaggedBatch(out, info, idx);
     }
 
     /**

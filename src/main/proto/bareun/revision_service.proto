@@ -274,6 +274,11 @@ message CorrectErrorResponse {
   string language = 99;
   // 어절의 개수
   int32 tokens_count = 100;
+
+  // 요청 글이 길어 앞부분만 처리했을 때만 채운다.
+  // origin·revised 는 처리한 앞부분이다. 처리하지 않은 뒷부분은 클라이언트가 원문에서
+  // Truncation.dropped_begin_offset 부터 이어 붙인다.
+  optional Truncation truncation = 14;
 }
 
 // 맞춤법 교정 요청 메시지
@@ -338,6 +343,11 @@ message StreamFirstCorrectError {
   int64 req_id = 201;
   // thinking id들의 배열
   repeated int32 thinking_ids = 101;
+
+  // 요청 글이 길어 앞부분만 처리했을 때만 채운다.
+  // origin·revised 는 처리한 앞부분이다. 처리하지 않은 뒷부분은 클라이언트가 원문에서
+  // Truncation.dropped_begin_offset 부터 이어 붙인다.
+  optional Truncation truncation = 14;
 }
 
 // 이전의 수정 중에서 취소가 된 경우 메시지

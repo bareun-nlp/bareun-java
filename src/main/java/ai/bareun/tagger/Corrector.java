@@ -95,6 +95,38 @@ public final class Corrector {
     }
 
     /**
+     * 교정된 문장과, 서버가 글이 길어 앞부분만 교정했는지를 함께 받는다.
+     *
+     * <p>요청 글이 서버 기준(운영 서비스 9,000자)을 넘으면 앞 5,000자 안팎만 교정한다.
+     * 그때 {@link Result#revised()} 는 처리한 앞부분의 교정 결과이고, 처리하지 않은
+     * 뒷부분은 원문의 {@link TruncationInfo#droppedBeginOffset()} 부터다. {@link #correct}
+     * 는 앞부분만 돌려주므로 긴 글에는 이 메서드를 쓴다.
+     *
+     * @param text 교정할 글
+     * @return 교정 결과와 잘림 정보
+     * @throws BareunException 호출 실패
+     */
+    public Result correctWithTruncation(String text) {
+        CorrectErrorResponse res = client.revision().correctError(text, customDictNames, null);
+        return new Result(res.getRevised(),
+                TruncationInfo.of(res.hasTruncation(), res.getTruncation()));
+    }
+
+    /**
+     * 교정 결과와 잘림 정보.
+     *
+     * @param revised 교정된 글. 잘렸으면 처리한 앞부분만이다.
+     * @param truncation 잘림 정보. 잘리지 않았으면 빈 값.
+     */
+    public record Result(String revised, java.util.Optional<TruncationInfo> truncation) {
+
+        /** @return 앞부분만 교정했으면 true */
+        public boolean truncated() {
+            return truncation.isPresent();
+        }
+    }
+
+    /**
      * 교정 하나.
      *
      * @param origin 원문 조각
