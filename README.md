@@ -123,11 +123,14 @@ client.dictSearch().words("아지", DictSearchAnchor.DICT_SEARCH_ANCHOR_SUFFIX, 
 | `*` | 음절 0개 이상 |
 | `?` | 음절 정확히 1개 |
 
-## 긴 글 (9,000자 넘는 요청)
+## 긴 글 (5,000자 넘는 요청)
 
-공개 서비스(`api.bareun.ai`)는 한 요청의 글이 **9,000자를 넘으면 거절하지 않고 앞 5,000자
-안팎만 처리**합니다. 문장 끝, 없으면 공백에서 끊고(앞 500자 안에서 찾습니다), 그것도 없으면
-글자 중간에서 끊습니다. 9,000자까지는 전부 처리합니다. 자체 설치한 서버는 기본으로 자르지 않습니다.
+공개 서비스(`api.bareun.ai`)는 한 요청의 글이 **5,000자를 넘으면 거절하지 않고 앞 5,000자
+안쪽만 처리**합니다. 5,000자까지는 통째로 처리합니다. 문장 끝, 없으면 공백에서 끊고, 그것도
+없으면 글자 중간에서 끊으므로 처리 길이가 5,000자보다 조금 짧을 수 있습니다.
+자체 설치한 서버는 기본으로 자르지 않습니다.
+
+**5,000자를 넘는 글은 아래 [세션으로 조각 나눠 보내기](#긴-문서는-세션으로-나눠-보내기)를 권장합니다.**
 
 버린 부분은 응답의 잘림 정보로 알려 줍니다. 잘리지 않은 응답에는 이 정보가 없습니다.
 결과의 위치(offset)는 잘렸어도 요청 글의 처음 기준 그대로입니다.
@@ -136,10 +139,10 @@ client.dictSearch().words("아지", DictSearchAnchor.DICT_SEARCH_ANCHOR_SUFFIX, 
 Tagged t = tagger.tag(longText);
 if (t.truncated()) {
     TruncationInfo info = t.truncation().orElseThrow();
-    info.originalChars();      // 9001   요청 글 전체의 글자 수
-    info.processedChars();     // 4991   처리한 글자 수(앞부분)
-    info.droppedChars();       // 4010   버린 글자 수
-    info.droppedBeginOffset(); // 4991   버린 구간이 시작하는 위치(String.substring 에 그대로)
+    info.originalChars();      // 6000   요청 글 전체의 글자 수
+    info.processedChars();     // 4993   처리한 글자 수(앞부분)
+    info.droppedChars();       // 1007   버린 글자 수
+    info.droppedBeginOffset(); // 4993   버린 구간이 시작하는 위치(String.substring 에 그대로)
     info.message();            // 안내 문구
     info.cutMidWord();         // true 면 글자 중간에서 잘라 마지막 어절을 믿기 어렵음
 
@@ -174,8 +177,9 @@ b.notProcessed(i);                // i 번째 문장이 전혀 처리되지 않�
 ## 긴 문서는 세션으로 나눠 보내기
 
 한 요청에 담을 수 없는 긴 글(책 한 권 등)은 문단·장 단위로 나눠 **같은 세션**으로 이어서 보냅니다.
+세션은 사용자 사전과 교정기 옵션을 한 번만 싣는 용도입니다. 호출이 빨라지는 것은 아닙니다.
 앞 호출에서 두 번 이상 나온 미등록 단어(고유명사 등)를 뒤 호출에서 알려진 말로 쓰므로,
-조각마다 따로 보낼 때보다 일관되게 교정됩니다. 위 잘림 때문에 조각은 9,000자를 넘기지 않게 나눕니다.
+조각마다 따로 보낼 때보다 일관되게 교정됩니다. 위 잘림 때문에 조각은 5,000자를 넘기지 않게 나눕니다.
 
 ```java
 Corrector corrector = new Corrector(client, List.of("mydict"));   // 사용자 사전은 세션 내내 쓰임
@@ -257,7 +261,7 @@ mvn test                                   # 단위 테스트
 BAREUN_API_KEY=koba-... mvn test -Dtest=LiveServerIT   # 서버가 있어야 도는 통합 테스트
 ```
 
-글자 수 기준을 건 서버(운영 서비스처럼 9,000자)에서는 `BAREUN_TRUNCATION_LIMIT=9000` 을 함께 주면
+글자 수 기준을 건 서버(운영 서비스처럼 5,000자)에서는 `BAREUN_TRUNCATION_LIMIT=5000` 을 함께 주면
 긴 글 시험까지 돕니다.
 
 통합 테스트는 `BAREUN_API_KEY` 가 없으면 통째로 건너뜁니다.
